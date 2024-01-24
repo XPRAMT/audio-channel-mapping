@@ -1,0 +1,3 @@
+﻿numpy
+PyQt6
+PyAudioWPatch
