@@ -1,6 +1,6 @@
 可以將輸入的任何聲道映射到輸出裝置的任何聲道<br>
 簡單的說就是可以用多個藍牙音響組家庭劇院<br>
-![img](https://i.imgur.com/VqhWzTB.jpg)
+![img](https://i.imgur.com/mKcvyig.jpg)
 <br><br>
 安裝:<br>
 python>=3.10
