@@ -5,15 +5,20 @@
 安裝:<br>
 python>=3.10
 ```
+git clone https://github.com/XPRAMT/audio-channel-mapping.git
+```
+```
 pip install -r requirements.txt
 ```
 
 使用:<br>
 run.bat<br>
-<br>
-如果遇到聲音卡頓問題嘗試調整緩衝(CHUNK)大小<br>
-SAMPLERATE 需要與裝置實際的採樣率一致
+
+注意事項:<br>
+如果遇到聲音卡頓問題嘗試調整幀長度和允許延遲<br>
+允許延遲過低會破音(因為不斷清空處理隊列，根據電腦性能調整)<br>
+輸出裝置的採樣率需與輸入一致，或是1/2倍，不可大於輸入
 ```
-CHUNK = 16
-SAMPLERATE = 96000
+CHUNK = 240         # 每幀長度(Hz)
+AllowDelay = 6      # 允許延遲(幀)
 ```

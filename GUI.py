@@ -7,7 +7,9 @@ import json
 import threading
 import audio
 import queue
+import time
 import sys
+import numpy as np
 ##########參數##########
 Config = [[],[]]
 file_name = 'config.json'
@@ -46,10 +48,16 @@ def list_audio_devices():
     
 # 掃描
 def ScanClicked():
+    audio.Stop()
+    for _ in range(50):
+        if button_start.text() == '開始':
+            break
+        time.sleep(0.1)
     list_audio_devices()
+    clear_layout(Grid)
     state_queue.put([2,'掃描成功'])
     mesg_timer.start(1000)
-    
+        
 # 布局
 def OkClicked():
     global table,buttons,devices_list,list_Col,list_Row
