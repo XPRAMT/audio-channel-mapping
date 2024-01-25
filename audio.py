@@ -5,7 +5,7 @@ import time
 #######################
 CHUNK = 16         # 每幀長度
 SampleRate = 96000 # 需要與裝置實際的採樣率一致
-AllowDelay = 70    # 過低會破音，根據電腦性能調整
+AllowDelay = 60    # 過低會破音，根據電腦性能調整
 #######################
 isStart = False
 def Stop():
@@ -29,11 +29,7 @@ def StartStream(devices_list,input_device,output_sets,state_queue,):
         def callback_B(in_data, frame_count, time_info, status):
             # 分離聲道
             outdata = np.zeros((CHUNK,channel_num),dtype=np.uint32)
-            Qsize = write_queues.qsize()
-            if Qsize > AllowDelay:
-                write_queues.queue.clear() # 清空
-                state_queue.put([2,f'已降低延遲'])
-            elif Qsize >0: #不為空
+            if not write_queues.empty(): #不為空
                 indata = write_queues.get()
                 for j,channel in enumerate(channel_sets): # channel
                     if channel:
@@ -41,6 +37,11 @@ def StartStream(devices_list,input_device,output_sets,state_queue,):
                         outdata[:,j] = indata[:,ch]
             return (outdata, pyaudio.paContinue)
         return callback_B
+    
+    def Clear_Queen(data_write_queues):
+        for write_queues in data_write_queues:
+            with write_queues.mutex:
+                write_queues.queue.clear()
 
     if not isStart:
         isStart = True
@@ -80,7 +81,10 @@ def StartStream(devices_list,input_device,output_sets,state_queue,):
         # 持續
         isStop = False
         while not isStop:
-            time.sleep(0.1)
+            if data_write_queues[0].qsize() > AllowDelay:
+                Clear_Queen(data_write_queues)
+                state_queue.put([2,f'已降低延遲'])
+            time.sleep(0.5)
         # 結束處理
         stream_input.stop_stream()
         stream_input.close()
