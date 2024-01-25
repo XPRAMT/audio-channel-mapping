@@ -9,7 +9,7 @@ import audio
 import queue
 import sys
 ##########參數##########
-isStar = False
+isStart = False
 Config = [[],[]]
 file_name = 'config.json'
 list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
@@ -26,7 +26,7 @@ def center(self):
     
 # 列出音訊裝置
 def list_audio_devices():
-    global input_device,devices_list,isStar,CheckBoxs
+    global input_device,devices_list,isStart,CheckBoxs
     p = pyaudio.PyAudio()
     input_device = p.get_default_wasapi_loopback()
     default_device = p.get_default_wasapi_device(d_out = True)
@@ -132,7 +132,7 @@ def buttons_clicked(i,j):
 
 # 開始按鈕
 def StarClicked():
-    global table,devices_list,isStar,button_star,Grid
+    global table,devices_list,isStart,button_star,Grid
     if Grid.count() != 0:
         audio.Stop()
         output_sets = []
@@ -146,7 +146,7 @@ def StarClicked():
                     if button.text() == 'on':
                         output_sets[table[j-1][0]][table[j-1][1]].append(i) #[device][out channel].append(in channel)
 
-        t = threading.Thread(target=audio.StarStream,args=(devices_list,input_device,output_sets,state_queue,))
+        t = threading.Thread(target=audio.StartStream,args=(devices_list,input_device,output_sets,state_queue,))
         t.daemon = True 
         t.start()
 
@@ -182,7 +182,6 @@ def SaveClicked():
         with open(file_name, 'w') as json_file:
             json.dump(loaded_config, json_file)
         state_queue.put([2,'已儲存'])
-        mesg_timer.start(2000)
 
 # 刪除按鈕
 def DelClicked():
@@ -218,7 +217,7 @@ def clear_layout(layout):
 
 # 更新狀態
 def updateChanged(state_queue):
-    global status_label,button_star
+    global status_label,button_start
     while (True):
         parameter = state_queue.get() # 等待狀態更新
         match parameter[0]:
@@ -226,7 +225,7 @@ def updateChanged(state_queue):
                 mesg_label.setVisible(False)
                 status_label.setText(parameter[1])
             case 1:
-                button_star.setText(parameter[1])
+                button_start.setText(parameter[1])
             case 2:
                 status_label.setVisible(False)
                 mesg_label.setVisible(True)
@@ -267,9 +266,9 @@ button_ok = QPushButton('布局')
 button_ok.clicked.connect(OkClicked)
 hbox.addWidget(button_ok)
 # 建立開始停止按鈕
-button_star = QPushButton('開始')
-button_star.clicked.connect(StarClicked)
-hbox.addWidget(button_star)
+button_start = QPushButton('開始')
+button_start.clicked.connect(StarClicked)
+hbox.addWidget(button_start)
 # 建立水平佈局管理器2
 hbox2 = QHBoxLayout()
 hbox2.setContentsMargins(0, 0, 0, 0)
@@ -300,8 +299,8 @@ mesg_timer= QTimer()
 def reset_mesg():
     mesg_label.setVisible(False)
     status_label.setVisible(True)
-reset_mesg()
 mesg_timer.timeout.connect(reset_mesg)
+reset_mesg()
 # 更新狀態線程
 state_queue = queue.Queue()
 t2 = threading.Thread(target=updateChanged,args=(state_queue,))

@@ -2,33 +2,38 @@
 import numpy as np
 import queue
 import time
-########################
-CHUNK = 16
-SAMPLERATE = 96000
-########################
+#######################
+CHUNK = 16         # 每幀長度
+SampleRate = 96000 # 需要與裝置實際的採樣率一致
+AllowDelay = 100   # 過低會破音
+#######################
 isStart = False
 def Stop():
     global isStop
     isStop = True
 
-def StarStream(devices_list,input_device,output_sets,state_queue,):
-    global isStart,isStop
+def StartStream(devices_list,input_device,output_sets,state_queue,):
+    global isStart,isStop,data_write_queues
     # 輸入處理
     def callback_input(data_write_queues,InputChannels):
         def callback_A(in_data, frame_count, time_info, status):
             global CHUNK # bytes>np.array
             indata = np.frombuffer(in_data, dtype=np.int32)
             indata = np.reshape(indata, (CHUNK, InputChannels))
-            for index in range(len(data_write_queues)):
-                data_write_queues[index].put(indata)
+            for write_queues in data_write_queues:
+                write_queues.put(indata)
             return (in_data, pyaudio.paContinue)
         return callback_A
     # 輸出處理
     def callback_output(write_queues,channel_num,channel_sets):
         def callback_B(in_data, frame_count, time_info, status):
-            global CHUNK # 分離聲道
+            global CHUNK,AllowDelay 
+            # 分離聲道
             outdata = np.zeros((CHUNK,channel_num),dtype=np.uint32)
-            if not write_queues.empty():
+            Qsize = write_queues.qsize()
+            if Qsize > AllowDelay:
+                write_queues.queue.clear() # 清空
+            elif Qsize >0: #不為空
                 indata = write_queues.get()
                 for j,channel in enumerate(channel_sets): # channel
                     if channel:
@@ -52,7 +57,7 @@ def StarStream(devices_list,input_device,output_sets,state_queue,):
                 channel = devices_list[i]['maxOutputChannels']
                 stream = p.open(format=pyaudio.paInt32,
                                 channels=channel,
-                                rate=SAMPLERATE,
+                                rate=SampleRate,
                                 output=True,
                                 output_device_index=devices_list[i]['index'],
                                 frames_per_buffer=CHUNK,
@@ -64,12 +69,12 @@ def StarStream(devices_list,input_device,output_sets,state_queue,):
         InputChannels = input_device['maxInputChannels']
         stream_input=p.open(format=pyaudio.paInt32,
                             channels=InputChannels,
-                            rate=SAMPLERATE,
+                            rate=SampleRate,
                             input=True,
                             input_device_index=input_device['index'],
                             frames_per_buffer=CHUNK,
-                            stream_callback=callback_input(data_write_queues,InputChannels))        
-
+                            stream_callback=callback_input(data_write_queues,InputChannels))
+        
         state_queue.put([0,f'聲道映射中,緩衝區大小:{CHUNK}'])
         print(fix_output_sets)
         # 持續
