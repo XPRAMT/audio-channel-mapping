@@ -2,13 +2,18 @@
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 from functools import partial
-import threading
 import pyaudiowpatch as pyaudio
+import json
+import threading
 import audio
 import queue
 import sys
-##########FUN##########
+##########參數##########
 isStar = False
+Config = [[],[]]
+file_name = 'config.json'
+list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
+##########FUN##########
 #視窗置中
 def center(self):
     # 取得螢幕的幾何訊息
@@ -18,10 +23,10 @@ def center(self):
     y = (screenGeometry.height() - self.height()) // 2
     # 設定視窗的位置
     self.setGeometry(x, y, self.width(), self.height())
+    
 # 列出音訊裝置
 def list_audio_devices():
-    global input_device,devices_list,isStar
-    audio.Stop()
+    global input_device,devices_list,isStar,CheckBoxs
     p = pyaudio.PyAudio()
     input_device = p.get_default_wasapi_loopback()
     default_device = p.get_default_wasapi_device(d_out = True)
@@ -31,31 +36,35 @@ def list_audio_devices():
             device['switch'] = 0
             devices_list.append(device)
     p.terminate()
-    AddCheckBox()# 添加裝置
-# 建立勾選按鈕
-def AddCheckBox(): 
-    global CheckBoxs,devices_list
-    CheckBoxs = {}
+    # 建立CheckBoxs
     clear_layout(cbox)
-    clear_layout(Grid)
+    CheckBoxs = {}
     for i,device in enumerate(devices_list):
         name = device['name']
         CheckBoxs[i] = QCheckBox()
         CheckBoxs[i].setText(f'{i+1}.{name}')
         cbox.addWidget(CheckBoxs[i])
     
+# 掃描
+def ScanClicked():
+    list_audio_devices()
+    state_queue.put([2,'掃描成功'])
+    mesg_timer.start(2000)
+    
+# 布局
 def OkClicked():
-    global table,buttons,devices_list,list_Col
+    global table,buttons,devices_list,list_Col,list_Row
     clear_layout(Grid)
-    buttons = {}
     list_Row = ['i\o']
     list_Col = ['']
+    Config[0] = [] 
     for i in range(len(devices_list)):
         if CheckBoxs[i].isChecked():
             devices_list[i]['switch'] = 1
+            Config[0].append(devices_list[i]['name'])
         else:
             devices_list[i]['switch'] = 0
-
+            
     table = [] #j對應device,channel
     for i in range(len(devices_list)):
         if devices_list[i]['switch'] == 1:
@@ -67,7 +76,9 @@ def OkClicked():
         list_Col.append(list_input[i])
     # 生成按鈕
     Devices_Label = {}
+    buttons = []
     for i in range(len(list_Col)):
+        buttons.append([])
         for j in range(len(list_Row)):
             if i == 0 :
                 Devices_Label[i,j] = QLabel(list_Row[j])
@@ -75,24 +86,51 @@ def OkClicked():
             elif j == 0:
                 Devices_Label[i,j] = QLabel(list_Col[i])
                 Grid.addWidget(Devices_Label[i, j], i, j)
+                buttons[i].append(None)
             else:
-                buttons[i,j] = QPushButton(f'off')
-                buttons[i,j].clicked.connect(partial(buttons_clicked, i, j))
-                buttons[i,j].setStyleSheet('color: red')
-                Grid.addWidget(buttons[i,j], i, j)
+                button = QPushButton(f'off')
+                button.clicked.connect(partial(buttons_clicked, i, j))
+                button.setStyleSheet('color: red')
+                Grid.addWidget(button, i, j)
+                buttons[i].append(button)
+    Auto_Apply()
 
+# 自動套用
+def Auto_Apply():
+    global Config,buttons,state_queue
+    with open(file_name, 'a') as json_file:
+            pass
+    try:
+        with open(file_name, 'r') as json_file:
+            loaded_config = json.load(json_file)
+        # 更新配置
+        A = None # 檢查是否有已儲存的配置
+        for i,C in enumerate(loaded_config):
+            if set(C[0]) == set(Config[0]):
+                A=i
+        if A != None:
+            for j,i in enumerate(loaded_config[A][1]):
+                buttons_clicked(i,j)
+            state_queue.put([2,'已套用配置'])
+            mesg_timer.start(2000)
+    except json.decoder.JSONDecodeError:
+        pass
+
+# 接線按鈕
 def buttons_clicked(i,j):
-    global buttons,list_Col
-    if buttons[i,j].text() == 'off':
-        for k in range(1,len(list_Col)):
-            buttons[k,j].setText('off')
-            buttons[k,j].setStyleSheet('color: red')
-        buttons[i,j].setText('on')
-        buttons[i,j].setStyleSheet('color: white')
-    else:
-        buttons[i,j].setText('off')
-        buttons[i,j].setStyleSheet('color: red')
+    global buttons,list_Col,list_Row
+    if (i*j > 0) and (i <= len(list_Col)) and (j <= len(list_Row)):
+        if buttons[i][j].text() == 'off':
+            for k in range(1,len(list_Col)):
+                buttons[k][j].setText('off')
+                buttons[k][j].setStyleSheet('color: red')
+            buttons[i][j].setText('on')
+            buttons[i][j].setStyleSheet('color: white')
+        else:
+            buttons[i][j].setText('off')
+            buttons[i][j].setStyleSheet('color: red')
 
+# 開始按鈕
 def StarClicked():
     global table,devices_list,isStar,button_star,Grid
     if Grid.count() != 0:
@@ -101,15 +139,75 @@ def StarClicked():
         for i in range(len(devices_list)):
             channel = [[] for _ in range(devices_list[i]['maxOutputChannels'])]
             output_sets.append(channel)
-                
-        for index in buttons:
-            if buttons[index].text() == 'on':
-                output_sets[table[index[1]-1][0]][table[index[1]-1][1]].append(index[0]) #[device][out channel].append(in channel)
+
+        for i,row_btns in enumerate(buttons):
+            for j,button in enumerate(row_btns):
+                if button:
+                    if button.text() == 'on':
+                        output_sets[table[j-1][0]][table[j-1][1]].append(i) #[device][out channel].append(in channel)
 
         t = threading.Thread(target=audio.StarStream,args=(devices_list,input_device,output_sets,state_queue,))
         t.daemon = True 
         t.start()
 
+# 儲存按鈕
+def SaveClicked():
+    global Config,buttons,state_queue
+    if Grid.count() != 0:
+        Config[1] = [0] * len(buttons[1])
+        for i,row_btns in enumerate(buttons):
+            for j,button in enumerate(row_btns):
+                if button:
+                    if button.text() == 'on':
+                        Config[1][j] = i
+        
+        with open(file_name, 'a') as json_file:
+            pass
+        try:
+            with open(file_name, 'r') as json_file:
+                loaded_config = json.load(json_file)
+            # 更新配置
+            A = None # 檢查是否有已儲存的配置
+            for i,C in enumerate(loaded_config):
+                if set(C[0]) == set(Config[0]):
+                    A=i
+            if A == None:
+                loaded_config.append(Config)
+            else:
+                loaded_config[i][1] = Config[1]
+        except json.decoder.JSONDecodeError:
+            loaded_config=[]
+            loaded_config.append(Config)
+        # 將更新後的配置寫回 JSON 文件
+        with open(file_name, 'w') as json_file:
+            json.dump(loaded_config, json_file)
+        state_queue.put([2,'已儲存'])
+        mesg_timer.start(2000)
+
+# 刪除按鈕
+def DelClicked():
+    global Config,state_queue
+    with open(file_name, 'a') as json_file:
+            pass
+    try:
+        with open(file_name, 'r') as json_file:
+            loaded_config = json.load(json_file)
+        # 更新配置
+        A = None # 檢查是否有已儲存的配置
+        for i,C in enumerate(loaded_config):
+            if set(C[0]) == set(Config[0]):
+                A=i
+        if A != None:
+            del loaded_config[A]
+            state_queue.put([2,'已刪除'])
+            mesg_timer.start(2000)
+    except json.decoder.JSONDecodeError:
+        loaded_config=[]
+    # 將更新後的配置寫回 JSON 文件
+    with open(file_name, 'w') as json_file:
+        json.dump(loaded_config, json_file)
+    
+# 清除layout
 def clear_layout(layout):
         # 移除 layout 中的所有子項目
         for i in reversed(range(layout.count())):
@@ -118,18 +216,21 @@ def clear_layout(layout):
             if item.widget():
                 item.widget().deleteLater()
 
+# 更新狀態
 def updateChanged(state_queue):
     global status_label,button_star
     while (True):
         parameter = state_queue.get() # 等待狀態更新
         match parameter[0]:
             case 0:
+                mesg_label.setVisible(False)
                 status_label.setText(parameter[1])
             case 1:
                 button_star.setText(parameter[1])
-##########參數##########
-# 通道列表
-list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
+            case 2:
+                status_label.setVisible(False)
+                mesg_label.setVisible(True)
+                mesg_label.setText(parameter[1])
 ##########初始化##########
 app = QApplication(sys.argv)
 app.setStyle('Fusion')
@@ -151,7 +252,7 @@ cbox.setContentsMargins(0, 0, 0, 0)
 cbox_container = QWidget()
 cbox_container.setLayout(cbox)
 vbox.addWidget(cbox_container)
-# 建立一個水平佈局管理器
+# 建立水平佈局管理器1
 hbox = QHBoxLayout()
 hbox.setContentsMargins(0, 0, 0, 0)
 hbox_container = QWidget()
@@ -159,7 +260,7 @@ hbox_container.setLayout(hbox)
 vbox.addWidget(hbox_container)
 # 建立scan按鈕
 button_scan = QPushButton('掃描')
-button_scan.clicked.connect(list_audio_devices)
+button_scan.clicked.connect(ScanClicked)
 hbox.addWidget(button_scan)
 # 建立ok按鈕
 button_ok = QPushButton('布局')
@@ -169,6 +270,20 @@ hbox.addWidget(button_ok)
 button_star = QPushButton('開始')
 button_star.clicked.connect(StarClicked)
 hbox.addWidget(button_star)
+# 建立水平佈局管理器2
+hbox2 = QHBoxLayout()
+hbox2.setContentsMargins(0, 0, 0, 0)
+hbox2_container = QWidget()
+hbox2_container.setLayout(hbox2)
+vbox.addWidget(hbox2_container)
+# 建立儲存按鈕
+button_Save = QPushButton('儲存配置')
+button_Save.clicked.connect(SaveClicked)
+hbox2.addWidget(button_Save)
+# 建立刪除按鈕
+button_del = QPushButton('刪除配置')
+button_del.clicked.connect(DelClicked)
+hbox2.addWidget(button_del)
 # 建立一個網格佈局管理器
 Grid = QGridLayout()
 Grid.setContentsMargins(0, 0, 0, 0)
@@ -179,6 +294,14 @@ vbox.addWidget(Grid_container)
 # 建立狀態顯示區
 status_label = QLabel()
 vbox.addWidget(status_label)
+mesg_label = QLabel()
+vbox.addWidget(mesg_label)
+mesg_timer= QTimer()
+def reset_mesg():
+    mesg_label.setVisible(False)
+    status_label.setVisible(True)
+reset_mesg()
+mesg_timer.timeout.connect(reset_mesg)
 # 更新狀態線程
 state_queue = queue.Queue()
 t2 = threading.Thread(target=updateChanged,args=(state_queue,))
@@ -189,8 +312,7 @@ list_audio_devices()
 # 建立視窗
 main_window = QWidget()
 main_window.setLayout(vbox)
-main_window.setGeometry(0, 0, 500, 100)
 main_window.setWindowTitle('聲道映射')
-center(main_window)
 main_window.show()
+center(main_window)
 sys.exit(app.exec())
