@@ -2,7 +2,7 @@
 import numpy as np
 import queue
 import time
-#############################
+########################
 CHUNK = 16
 SAMPLERATE = 96000
 ########################
