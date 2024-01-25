@@ -9,7 +9,6 @@ import audio
 import queue
 import sys
 ##########參數##########
-isStart = False
 Config = [[],[]]
 file_name = 'config.json'
 list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
@@ -26,7 +25,7 @@ def center(self):
     
 # 列出音訊裝置
 def list_audio_devices():
-    global input_device,devices_list,isStart,CheckBoxs
+    global input_device,devices_list,CheckBoxs
     p = pyaudio.PyAudio()
     input_device = p.get_default_wasapi_loopback()
     default_device = p.get_default_wasapi_device(d_out = True)
@@ -49,7 +48,7 @@ def list_audio_devices():
 def ScanClicked():
     list_audio_devices()
     state_queue.put([2,'掃描成功'])
-    mesg_timer.start(2000)
+    mesg_timer.start(1000)
     
 # 布局
 def OkClicked():
@@ -112,7 +111,7 @@ def Auto_Apply():
             for j,i in enumerate(loaded_config[A][1]):
                 buttons_clicked(i,j)
             state_queue.put([2,'已套用配置'])
-            mesg_timer.start(2000)
+            mesg_timer.start(1000)
     except json.decoder.JSONDecodeError:
         pass
 
@@ -132,7 +131,7 @@ def buttons_clicked(i,j):
 
 # 開始按鈕
 def StarClicked():
-    global table,devices_list,isStart,button_star,Grid
+    global table,devices_list,Grid
     if Grid.count() != 0:
         audio.Stop()
         output_sets = []
@@ -149,6 +148,7 @@ def StarClicked():
         t = threading.Thread(target=audio.StartStream,args=(devices_list,input_device,output_sets,state_queue,))
         t.daemon = True 
         t.start()
+        mesg_timer.start(1000)
 
 # 儲存按鈕
 def SaveClicked():
@@ -182,6 +182,7 @@ def SaveClicked():
         with open(file_name, 'w') as json_file:
             json.dump(loaded_config, json_file)
         state_queue.put([2,'已儲存'])
+        mesg_timer.start(1000)
 
 # 刪除按鈕
 def DelClicked():
@@ -199,7 +200,7 @@ def DelClicked():
         if A != None:
             del loaded_config[A]
             state_queue.put([2,'已刪除'])
-            mesg_timer.start(2000)
+            mesg_timer.start(1000)
     except json.decoder.JSONDecodeError:
         loaded_config=[]
     # 將更新後的配置寫回 JSON 文件

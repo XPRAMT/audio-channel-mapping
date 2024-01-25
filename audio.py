@@ -5,7 +5,7 @@ import time
 #######################
 CHUNK = 16         # 每幀長度
 SampleRate = 96000 # 需要與裝置實際的採樣率一致
-AllowDelay = 100   # 過低會破音
+AllowDelay = 70    # 過低會破音，根據電腦性能調整
 #######################
 isStart = False
 def Stop():
@@ -13,11 +13,11 @@ def Stop():
     isStop = True
 
 def StartStream(devices_list,input_device,output_sets,state_queue,):
-    global isStart,isStop,data_write_queues
+    global isStart,isStop
     # 輸入處理
     def callback_input(data_write_queues,InputChannels):
         def callback_A(in_data, frame_count, time_info, status):
-            global CHUNK # bytes>np.array
+            # bytes>np.array
             indata = np.frombuffer(in_data, dtype=np.int32)
             indata = np.reshape(indata, (CHUNK, InputChannels))
             for write_queues in data_write_queues:
@@ -27,12 +27,12 @@ def StartStream(devices_list,input_device,output_sets,state_queue,):
     # 輸出處理
     def callback_output(write_queues,channel_num,channel_sets):
         def callback_B(in_data, frame_count, time_info, status):
-            global CHUNK,AllowDelay 
             # 分離聲道
             outdata = np.zeros((CHUNK,channel_num),dtype=np.uint32)
             Qsize = write_queues.qsize()
             if Qsize > AllowDelay:
                 write_queues.queue.clear() # 清空
+                state_queue.put([2,f'已降低延遲'])
             elif Qsize >0: #不為空
                 indata = write_queues.get()
                 for j,channel in enumerate(channel_sets): # channel
@@ -75,7 +75,7 @@ def StartStream(devices_list,input_device,output_sets,state_queue,):
                             frames_per_buffer=CHUNK,
                             stream_callback=callback_input(data_write_queues,InputChannels))
         
-        state_queue.put([0,f'聲道映射中,緩衝區大小:{CHUNK}'])
+        state_queue.put([0,f'聲道映射中,幀長度:{CHUNK}'])
         print(fix_output_sets)
         # 持續
         isStop = False
