@@ -12,7 +12,7 @@ pip install -r requirements.txt
 ```
 
 使用:<br>
-run.bat<br>
+GUI.pyw<br>
 
 注意事項:<br>
 如果遇到聲音卡頓問題在config.json嘗試調整幀長度和允許延遲<br>
