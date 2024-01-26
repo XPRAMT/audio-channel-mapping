@@ -9,10 +9,11 @@ import audio
 import queue
 import time
 import sys
-import numpy as np
 ##########參數##########
 Config = [[],[]]
 file_name = 'config.json'
+CHUNK = 320
+AllowDelay = 10
 list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
 ##########FUN##########
 #視窗置中
@@ -27,23 +28,23 @@ def center(self):
     
 # 列出音訊裝置
 def list_audio_devices():
-    global input_device,devices_list,CheckBoxs
+    global input_loopback,devices_list,CheckBoxs
     p = pyaudio.PyAudio()
-    input_device = p.get_default_wasapi_loopback()
-    default_device = p.get_default_wasapi_device(d_out = True)
+    input_loopback = p.get_default_wasapi_loopback()
+    input_device = p.get_default_wasapi_device(d_out = True)
     devices_list = []
     for _ , device in enumerate(p.get_device_info_generator_by_host_api(host_api_index=2)):
-        if (device['maxOutputChannels'] > 0) and (device['index'] != default_device['index']):
+        if (device['maxOutputChannels'] > 0) and (device['index'] != input_device['index']):
             device['switch'] = 0
             devices_list.append(device)
     p.terminate()
+    input_label.setText(f'{input_device["name"]} | {input_device["defaultSampleRate"]/1000}KHz')
     # 建立CheckBoxs
     clear_layout(cbox)
     CheckBoxs = {}
     for i,device in enumerate(devices_list):
-        name = device['name']
         CheckBoxs[i] = QCheckBox()
-        CheckBoxs[i].setText(f'{i+1}.{name}')
+        CheckBoxs[i].setText(f'{i+1}.{device["name"]} | {device["defaultSampleRate"]/1000}KHz')
         cbox.addWidget(CheckBoxs[i])
     
 # 掃描
@@ -79,7 +80,7 @@ def OkClicked():
                 list_Row.append(f'dev{i+1}:{list_input[channel]}')
                 table.append([i,channel])
     # 生成list_Col
-    for i in range(input_device['maxInputChannels']):
+    for i in range(input_loopback['maxInputChannels']):
         list_Col.append(list_input[i])
     # 生成按鈕
     Devices_Label = {}
@@ -104,7 +105,7 @@ def OkClicked():
 
 # 自動套用
 def Auto_Apply():
-    global Config,buttons,state_queue
+    global Config,buttons,state_queue,CHUNK,AllowDelay
     with open(file_name, 'a') as json_file:
             pass
     try:
@@ -115,13 +116,22 @@ def Auto_Apply():
         for i,C in enumerate(loaded_config):
             if set(C[0]) == set(Config[0]):
                 A=i
+            if C[0][0] == 'CHUNK':
+                CHUNK = C [1][0]
+            if C[0][0] == 'AllowDelay':
+                AllowDelay = C [1][0]
         if A != None:
             for j,i in enumerate(loaded_config[A][1]):
                 buttons_clicked(i,j)
             state_queue.put([2,'已套用配置'])
             mesg_timer.start(1000)
     except json.decoder.JSONDecodeError:
-        pass
+        loaded_config = [[["CHUNK"], [CHUNK]],[["AllowDelay"], [AllowDelay]]]
+        # 將更新後的配置寫回 JSON 文件
+        with open(file_name, 'w') as json_file:
+            json.dump(loaded_config, json_file)
+        state_queue.put([2,'已儲存'])
+        mesg_timer.start(1000)
 
 # 接線按鈕
 def buttons_clicked(i,j):
@@ -153,7 +163,8 @@ def StarClicked():
                     if button.text() == 'on':
                         output_sets[table[j-1][0]][table[j-1][1]].append(i) #[device][out channel].append(in channel)
 
-        t = threading.Thread(target=audio.StartStream,args=(devices_list,input_device,output_sets,state_queue,))
+        t_args = (devices_list,input_loopback,output_sets,state_queue,CHUNK,AllowDelay)
+        t = threading.Thread(target=audio.StartStream,args=t_args)
         t.daemon = True 
         t.start()
         mesg_timer.start(1000)
@@ -184,8 +195,7 @@ def SaveClicked():
             else:
                 loaded_config[i][1] = Config[1]
         except json.decoder.JSONDecodeError:
-            loaded_config=[]
-            loaded_config.append(Config)
+            loaded_config = [[["CHUNK"], [CHUNK]],[["AllowDelay"], [AllowDelay]]]
         # 將更新後的配置寫回 JSON 文件
         with open(file_name, 'w') as json_file:
             json.dump(loaded_config, json_file)
@@ -210,7 +220,7 @@ def DelClicked():
             state_queue.put([2,'已刪除'])
             mesg_timer.start(1000)
     except json.decoder.JSONDecodeError:
-        loaded_config=[]
+        loaded_config = [[["CHUNK"], [CHUNK]],[["AllowDelay"], [AllowDelay]]]
     # 將更新後的配置寫回 JSON 文件
     with open(file_name, 'w') as json_file:
         json.dump(loaded_config, json_file)
@@ -254,6 +264,10 @@ app.setFont(default_font)
 vbox = QVBoxLayout()
 vbox.setContentsMargins(5, 5, 5, 5)
 vbox.setAlignment(Qt.AlignmentFlag.AlignTop)
+# 輸入裝置
+input_label = QLabel()
+input_label.setStyleSheet('color:rgb(0, 255, 0)')
+vbox.addWidget(input_label)
 # 建立一個CheckBox佈局管理器
 cbox = QVBoxLayout()
 cbox.setContentsMargins(0, 0, 0, 0)

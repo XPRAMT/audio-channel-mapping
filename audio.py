@@ -3,15 +3,12 @@ import numpy as np
 import queue
 import time
 #######################
-CHUNK = 240         # 每幀長度
-AllowDelay = 6      # 過低會破音，根據電腦性能調整
-#######################
 isStart = False
 def Stop():
     global isStop
     isStop = True
 
-def StartStream(devices_list,input_device,output_sets,state_queue,):
+def StartStream(devices_list,input_device,output_sets,state_queue,CHUNK,AllowDelay):
     global isStart,isStop
     # 輸入處理
     def callback_input(data_write_queues,InputChannels):
@@ -33,12 +30,15 @@ def StartStream(devices_list,input_device,output_sets,state_queue,):
                 for j,channel in enumerate(channel_sets): # channel
                     if channel:
                         ch = channel[0] - 1
-                        if CHUNK/CHUNKFix == 1:
+                        if CHUNK/CHUNKFix == 1:     #原始
                             outdata[:,j] = indata[:,ch]
-                        elif CHUNK/CHUNKFix == 2:
+                        elif CHUNK/CHUNKFix == 2: #1/2倍採樣
                             outdata[:,j] = indata[0:CHUNK:2,ch]
-                        else:
-                            outdata[:,j] = indata[0:CHUNKFix,ch]
+                        elif CHUNK/CHUNKFix == 1/2: #2倍採樣
+                            outdata[:,j] = np.repeat(indata[:,ch],2)
+                        else:                       # 其他
+                            indices = np.linspace(0, CHUNK, CHUNKFix+1)
+                            outdata[:,j] = np.interp(indices[:-1], np.arange(CHUNK),indata[:,ch])
                         
             return (outdata, pyaudio.paContinue)
         return callback_B
@@ -62,67 +62,58 @@ def StartStream(devices_list,input_device,output_sets,state_queue,):
         stream_output = []
         fix_output_sets = []
         data_write_queues = []
-        SameRate = True
-        SameError = False
-        for i,channel_sets in enumerate(output_sets):
-            total_sum = sum(sum(sublist) for sublist in channel_sets if sublist)
+        Resample = False
+        AD = AllowDelay
+        for i,CH_sets in enumerate(output_sets):
+            total_sum = sum(sum(sublist) for sublist in CH_sets if sublist)
             if total_sum > 0:
                 write_queues = queue.Queue()
-                Outputchannel = devices_list[i]['maxOutputChannels']
+                OutputCH = devices_list[i]['maxOutputChannels']
                 OutputRate = int(devices_list[i]['defaultSampleRate'])
                 RateScale = OutputRate/InputRate
-                if not (RateScale > 1):
-                    CHUNKFix = int(CHUNK*RateScale)
-                    if RateScale not in {1,0.5}:
-                        SameRate = False
-                    stream = p.open(format=pyaudio.paInt32,
-                                    channels=Outputchannel,
-                                    rate=OutputRate,
-                                    output=True,
-                                    output_device_index=devices_list[i]['index'],
-                                    frames_per_buffer=CHUNKFix,
-                                    stream_callback=callback_output(write_queues,Outputchannel,channel_sets,CHUNKFix))
-                    stream_output.append(stream)
-                    fix_output_sets.append(channel_sets)
-                    data_write_queues.append(write_queues)
-                else:
-                    SameError = True
+                CHUNKFix = int(CHUNK*RateScale)
+                if RateScale not in {1,2}:
+                    Resample = True
+                stream = p.open(format=pyaudio.paInt32,
+                                channels=OutputCH,
+                                rate=OutputRate,
+                                output=True,
+                                output_device_index=devices_list[i]['index'],
+                                frames_per_buffer=CHUNKFix,
+                                stream_callback=callback_output(write_queues,OutputCH,CH_sets,CHUNKFix))
+                stream_output.append(stream)
+                fix_output_sets.append(CH_sets)
+                data_write_queues.append(write_queues)
+        print(fix_output_sets)
         # 初始化輸入流
-        if not SameError:
-            stream_input=p.open(format=pyaudio.paInt32,
-                                channels=InputChannel,
-                                rate=InputRate,
-                                input=True,
-                                input_device_index=input_device['index'],
-                                frames_per_buffer=CHUNK,
-                                stream_callback=callback_input(data_write_queues,InputChannel))
-            
-            print(fix_output_sets)
-            AD = int(AllowDelay*(len(data_write_queues)+2)/3)
-            if SameRate:
-                state_queue.put([0,f'映射中,幀長度:{CHUNK}Hz,允許延遲:{AD}幀'])
-            else:
-                state_queue.put([0,f'裝置採樣率不一致,聲音異常!'])
-
-            # 持續
-            isStop = False
-            while not isStop:
-                if Clear_Queen(data_write_queues,AD):
-                    state_queue.put([2,f'已降低延遲'])
-                time.sleep(0.2)
-            # 結束處理
-            stream_input.stop_stream()
-            stream_input.close()
+        stream_input=p.open(format=pyaudio.paInt32,
+                            channels=InputChannel,
+                            rate=InputRate,
+                            input=True,
+                            input_device_index=input_device['index'],
+                            frames_per_buffer=CHUNK,
+                            stream_callback=callback_input(data_write_queues,InputChannel))
+        Resample_msg = ''
+        if Resample:
+            AD = AllowDelay*2
+            Resample_msg = f' |重採樣,音質受損!'
+        state_queue.put([0,f'幀長度:{CHUNK}Hz |允許延遲:{AD}幀{Resample_msg}'])
+        # 等待停止&清空隊列
+        isStop = False
+        while not isStop:
+            if Clear_Queen(data_write_queues,AD):
+                state_queue.put([2,f'已降低延遲'])
+            time.sleep(0.2)
+        # 結束處理
+        stream_input.stop_stream()
+        stream_input.close()
         for stream in stream_output:
             stream.stop_stream()
             stream.close()
         p.terminate()
         isStart = False
         state_queue.put([1,'開始'])
-        if SameError:
-            state_queue.put([0,'錯誤:輸出採樣率大於輸入'])
-        else:
-            state_queue.put([0,'已停止'])
+        state_queue.put([0,'已停止'])
         
          
     
