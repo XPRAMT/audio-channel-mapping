@@ -28,12 +28,14 @@ def center(self):
     
 # 列出音訊裝置
 def list_audio_devices():
-    global input_loopback,devices_list,CheckBoxs
+    global input_loopback,devices_list,CheckBoxs,All_Devices
     p = pyaudio.PyAudio()
     input_loopback = p.get_default_wasapi_loopback()
     input_device = p.get_default_wasapi_device(d_out = True)
     devices_list = []
-    for _ , device in enumerate(p.get_device_info_generator_by_host_api(host_api_index=2)):
+    All_Devices = []
+    for device in p.get_device_info_generator_by_host_api(host_api_index=2):
+        All_Devices.append(device)
         if (device['maxOutputChannels'] > 0) and (device['index'] != input_device['index']):
             device['switch'] = 0
             devices_list.append(device)
@@ -149,8 +151,18 @@ def buttons_clicked(i,j):
 
 # 開始按鈕
 def StarClicked():
-    global table,devices_list,Grid
-    if Grid.count() != 0:
+    global table,devices_list,Grid,All_Devices
+
+    def Check_Devices():
+        p2 = pyaudio.PyAudio()
+        for i,device in enumerate(p2.get_device_info_generator_by_host_api(host_api_index=2)):
+            if device['name'] != All_Devices[i]['name']:
+                p2.terminate()
+                return False
+        p2.terminate()
+        return True
+
+    if (Grid.count() != 0) and Check_Devices():
         audio.Stop()
         output_sets = []
         for i in range(len(devices_list)):
@@ -168,6 +180,10 @@ def StarClicked():
         t.daemon = True 
         t.start()
         mesg_timer.start(1000)
+    else:
+        state_queue.put([2,'裝置變化,重新掃描'])
+        mesg_timer.start(2000)
+        rescan_timer.start(1000)
 
 # 儲存按鈕
 def SaveClicked():
@@ -240,15 +256,16 @@ def updateChanged(state_queue):
     while (True):
         parameter = state_queue.get() # 等待狀態更新
         match parameter[0]:
-            case 0:
+            case 0: # 持續狀態
                 mesg_label.setVisible(False)
                 status_label.setText(parameter[1])
-            case 1:
+            case 1: # 開始按鈕
                 button_start.setText(parameter[1])
-            case 2:
+            case 2: # 短暫通知
                 status_label.setVisible(False)
                 mesg_label.setVisible(True)
                 mesg_label.setText(parameter[1])
+
 ##########初始化##########
 app = QApplication(sys.argv)
 app.setStyle('Fusion')
@@ -318,12 +335,18 @@ status_label = QLabel()
 vbox.addWidget(status_label)
 mesg_label = QLabel()
 vbox.addWidget(mesg_label)
+# 計時器
 mesg_timer= QTimer()
 def reset_mesg():
     mesg_label.setVisible(False)
     status_label.setVisible(True)
 mesg_timer.timeout.connect(reset_mesg)
 reset_mesg()
+rescan_timer = QTimer()
+def rescan():
+    rescan_timer.stop()
+    ScanClicked() 
+rescan_timer.timeout.connect(rescan)
 # 更新狀態線程
 state_queue = queue.Queue()
 t2 = threading.Thread(target=updateChanged,args=(state_queue,))

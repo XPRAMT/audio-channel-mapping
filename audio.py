@@ -8,7 +8,7 @@ def Stop():
     global isStop
     isStop = True
 
-def StartStream(devices_list,input_device,output_sets,state_queue,CHUNK,AllowDelay):
+def StartStream(output_devices,input_device,output_sets,state_queue,CHUNK,AllowDelay):
     global isStart,isStop
     # 輸入處理
     def callback_input(data_write_queues,InputChannels):
@@ -42,7 +42,7 @@ def StartStream(devices_list,input_device,output_sets,state_queue,CHUNK,AllowDel
                         
             return (outdata, pyaudio.paContinue)
         return callback_B
-    
+    # 清除隊列
     def Clear_Queen(data_write_queues,AD):
         Clear = False
         for write_queues in data_write_queues:
@@ -55,6 +55,7 @@ def StartStream(devices_list,input_device,output_sets,state_queue,CHUNK,AllowDel
         isStart = True
         state_queue.put([1,'停止'])
         p = pyaudio.PyAudio()
+
         # 輸入聲道,samplerate
         InputChannel = input_device['maxInputChannels']
         InputRate = int(input_device['defaultSampleRate'])
@@ -68,8 +69,8 @@ def StartStream(devices_list,input_device,output_sets,state_queue,CHUNK,AllowDel
             total_sum = sum(sum(sublist) for sublist in CH_sets if sublist)
             if total_sum > 0:
                 write_queues = queue.Queue()
-                OutputCH = devices_list[i]['maxOutputChannels']
-                OutputRate = int(devices_list[i]['defaultSampleRate'])
+                OutputCH = output_devices[i]['maxOutputChannels']
+                OutputRate = int(output_devices[i]['defaultSampleRate'])
                 RateScale = OutputRate/InputRate
                 CHUNKFix = int(CHUNK*RateScale)
                 if RateScale not in {1,2}:
@@ -78,12 +79,13 @@ def StartStream(devices_list,input_device,output_sets,state_queue,CHUNK,AllowDel
                                 channels=OutputCH,
                                 rate=OutputRate,
                                 output=True,
-                                output_device_index=devices_list[i]['index'],
+                                output_device_index=output_devices[i]['index'],
                                 frames_per_buffer=CHUNKFix,
                                 stream_callback=callback_output(write_queues,OutputCH,CH_sets,CHUNKFix))
                 stream_output.append(stream)
                 fix_output_sets.append(CH_sets)
                 data_write_queues.append(write_queues)
+                
         print(fix_output_sets)
         # 初始化輸入流
         stream_input=p.open(format=pyaudio.paInt32,
@@ -93,9 +95,10 @@ def StartStream(devices_list,input_device,output_sets,state_queue,CHUNK,AllowDel
                             input_device_index=input_device['index'],
                             frames_per_buffer=CHUNK,
                             stream_callback=callback_input(data_write_queues,InputChannel))
+        if Resample or (len(stream_output)>1):
+            AD = AllowDelay*2
         Resample_msg = ''
         if Resample:
-            AD = AllowDelay*2
             Resample_msg = f' |重採樣,音質受損!'
         state_queue.put([0,f'幀長度:{CHUNK}Hz |允許延遲:{AD}幀{Resample_msg}'])
         # 等待停止&清空隊列
