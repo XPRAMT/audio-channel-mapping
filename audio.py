@@ -100,7 +100,8 @@ def StartStream(output_devices,input_device,output_sets,state_queue,CHUNK,AllowD
         Resample_msg = ''
         if Resample:
             Resample_msg = f' |重採樣,音質受損!'
-        state_queue.put([0,f'幀長度:{CHUNK}Hz |允許延遲:{AD}幀{Resample_msg}'])
+        delay_ms = int(CHUNK*AD*1000/InputRate)
+        state_queue.put([0,f'幀長度:{CHUNK}Hz |允許延遲:{AD}幀({delay_ms}ms){Resample_msg}'])
         # 等待停止&清空隊列
         isStop = False
         while not isStop:
