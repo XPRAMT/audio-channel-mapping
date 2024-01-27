@@ -14,12 +14,10 @@ pip install -r requirements.txt
 使用:<br>
 GUI.pyw<br>
 
-注意事項:<br>
-如果遇到聲音卡頓問題在config.json嘗試調整幀長度和允許延遲<br>
-允許延遲過低會破音(因為不斷清空處理隊列，根據電腦性能調整)<br>
+提示:<br>
+可以在config.json調整允許延遲(ms),系統會從設定值開始嘗試,直到不會卡頓<br>
 ```
-[["CHUNK"], [320]]      # 每幀長度(Hz)
-[["AllowDelay"], [6]]   # 允許延遲(幀)
+[["AllowDelay"], [20]]   # 允許延遲,預設20ms
 ```
 如果需要在多個裝置間同步音量請參考:<br>
 https://github.com/XPRAMT/Device-Volume-Sync

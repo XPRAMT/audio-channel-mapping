@@ -14,8 +14,8 @@ ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.chan
 ##########參數##########
 Config = [[],[]]
 file_name = 'config.json'
-CHUNK = 320
-AllowDelay = 10
+AllowDelay = 20 
+MesgPrintTime = 1000
 list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
 ##########FUN##########
 #視窗置中
@@ -61,7 +61,7 @@ def ScanClicked():
     list_audio_devices()
     clear_layout(Grid)
     state_queue.put([2,'掃描成功'])
-    mesg_timer.start(1000)
+    mesg_timer.start(MesgPrintTime)
         
 # 布局
 def OkClicked():
@@ -120,22 +120,20 @@ def Auto_Apply():
         for i,C in enumerate(loaded_config):
             if set(C[0]) == set(Config[0]):
                 A=i
-            if C[0][0] == 'CHUNK':
-                CHUNK = C [1][0]
             if C[0][0] == 'AllowDelay':
                 AllowDelay = C [1][0]
         if A != None:
             for j,i in enumerate(loaded_config[A][1]):
                 buttons_clicked(i,j)
             state_queue.put([2,'已套用配置'])
-            mesg_timer.start(1000)
+            mesg_timer.start(MesgPrintTime)
     except json.decoder.JSONDecodeError:
-        loaded_config = [[["CHUNK"], [CHUNK]],[["AllowDelay"], [AllowDelay]]]
+        loaded_config = [[["AllowDelay"], [AllowDelay]]]
         # 將更新後的配置寫回 JSON 文件
         with open(file_name, 'w') as json_file:
             json.dump(loaded_config, json_file)
         state_queue.put([2,'已儲存'])
-        mesg_timer.start(1000)
+        mesg_timer.start(MesgPrintTime)
 
 # 接線按鈕
 def buttons_clicked(i,j):
@@ -181,15 +179,15 @@ def StarClicked():
                     if button.text() == 'on':
                         output_sets[table[j-1][0]][table[j-1][1]].append(i) #[device][out channel].append(in channel)
 
-        t_args = (devices_list,input_loopback,output_sets,state_queue,CHUNK,AllowDelay)
+        t_args = (devices_list,input_loopback,output_sets,state_queue,AllowDelay)
         t = threading.Thread(target=audio.StartStream,args=t_args)
         t.daemon = True 
         t.start()
-        mesg_timer.start(1000)
+        mesg_timer.start(MesgPrintTime)
     else:
         state_queue.put([2,'裝置變化,重新掃描'])
-        mesg_timer.start(2000)
-        rescan_timer.start(1000)
+        mesg_timer.start(MesgPrintTime)
+        rescan_timer.start(500)
 
 # 儲存按鈕
 def SaveClicked():
@@ -217,12 +215,12 @@ def SaveClicked():
             else:
                 loaded_config[i][1] = Config[1]
         except json.decoder.JSONDecodeError:
-            loaded_config = [[["CHUNK"], [CHUNK]],[["AllowDelay"], [AllowDelay]]]
+            loaded_config = [[["AllowDelay"], [AllowDelay]]]
         # 將更新後的配置寫回 JSON 文件
         with open(file_name, 'w') as json_file:
             json.dump(loaded_config, json_file)
         state_queue.put([2,'已儲存'])
-        mesg_timer.start(1000)
+        mesg_timer.start(MesgPrintTime)
 
 # 刪除按鈕
 def DelClicked():
@@ -240,9 +238,9 @@ def DelClicked():
         if A != None:
             del loaded_config[A]
             state_queue.put([2,'已刪除'])
-            mesg_timer.start(1000)
+            mesg_timer.start(MesgPrintTime)
     except json.decoder.JSONDecodeError:
-        loaded_config = [[["CHUNK"], [CHUNK]],[["AllowDelay"], [AllowDelay]]]
+        loaded_config = [[["AllowDelay"], [AllowDelay]]]
     # 將更新後的配置寫回 JSON 文件
     with open(file_name, 'w') as json_file:
         json.dump(loaded_config, json_file)
@@ -263,13 +261,10 @@ def updateChanged(state_queue):
         parameter = state_queue.get() # 等待狀態更新
         match parameter[0]:
             case 0: # 持續狀態
-                mesg_label.setVisible(False)
                 status_label.setText(parameter[1])
             case 1: # 開始按鈕
                 button_start.setText(parameter[1])
             case 2: # 短暫通知
-                status_label.setVisible(False)
-                mesg_label.setVisible(True)
                 mesg_label.setText(parameter[1])
 
 ##########初始化##########
@@ -336,17 +331,22 @@ Grid.setAlignment(Qt.AlignmentFlag.AlignCenter)
 Grid_container = QWidget()
 Grid_container.setLayout(Grid)
 vbox.addWidget(Grid_container)
+# 建立水平佈局管理器3
+hbox3 = QHBoxLayout()
+hbox3.setContentsMargins(0, 0, 0, 0)
+hbox3_container = QWidget()
+hbox3_container.setLayout(hbox3)
+vbox.addWidget(hbox3_container)
 # 建立狀態顯示區
 status_label = QLabel()
-vbox.addWidget(status_label)
+hbox3.addWidget(status_label)
 mesg_label = QLabel()
-mesg_label.setVisible(False)
-vbox.addWidget(mesg_label)
+mesg_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+hbox3.addWidget(mesg_label)
 # 計時器
 mesg_timer= QTimer()
 def reset_mesg():
-    mesg_label.setVisible(False)
-    status_label.setVisible(True)
+    mesg_label.setText('')
 mesg_timer.timeout.connect(reset_mesg)
 rescan_timer = QTimer()
 def rescan():
