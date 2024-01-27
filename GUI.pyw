@@ -1,6 +1,6 @@
-﻿from PyQt6.QtCore import *#Qt,QTimer
-from PyQt6.QtGui import *#QPalette,QColor,QFont
-from PyQt6.QtWidgets import *#QApplication,QWidget,QVBoxLayout,QHBoxLayout,QGridLayout,QPushButton,QCheckBox,QLabel
+﻿from PyQt6.QtCore import Qt,QTimer
+from PyQt6.QtGui import QPalette,QColor,QFont,QIcon
+from PyQt6.QtWidgets import QApplication,QWidget,QVBoxLayout,QHBoxLayout,QGridLayout,QPushButton,QCheckBox,QLabel
 from functools import partial
 import pyaudiowpatch as pyaudio
 import json
@@ -9,6 +9,8 @@ import audio
 import queue
 import time
 import sys
+import ctypes
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
 ##########參數##########
 Config = [[],[]]
 file_name = 'config.json'
@@ -338,6 +340,7 @@ vbox.addWidget(Grid_container)
 status_label = QLabel()
 vbox.addWidget(status_label)
 mesg_label = QLabel()
+mesg_label.setVisible(False)
 vbox.addWidget(mesg_label)
 # 計時器
 mesg_timer= QTimer()
@@ -345,7 +348,6 @@ def reset_mesg():
     mesg_label.setVisible(False)
     status_label.setVisible(True)
 mesg_timer.timeout.connect(reset_mesg)
-reset_mesg()
 rescan_timer = QTimer()
 def rescan():
     rescan_timer.stop()
@@ -362,6 +364,7 @@ list_audio_devices()
 main_window = QWidget()
 main_window.setLayout(vbox)
 main_window.setWindowTitle('聲道映射')
+main_window.setWindowIcon(QIcon('C:/APP/@develop/audio-channel-mapping/icon.ico'))
 main_window.show()
 center(main_window)
 sys.exit(app.exec())
