@@ -156,7 +156,11 @@ def StarClicked():
     def Check_Devices():
         p2 = pyaudio.PyAudio()
         for i,device in enumerate(p2.get_device_info_generator_by_host_api(host_api_index=2)):
-            if device['name'] != All_Devices[i]['name']:
+            A = (device['name'] != All_Devices[i]['name'])
+            B = (device['maxOutputChannels'] != All_Devices[i]['maxOutputChannels'])
+            C = (device['maxInputChannels'] != All_Devices[i]['maxInputChannels'])
+            D = (device['defaultSampleRate'] != All_Devices[i]['defaultSampleRate'])
+            if A or B or C or D:
                 p2.terminate()
                 return False
         p2.terminate()
