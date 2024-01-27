@@ -21,3 +21,5 @@ GUI.pyw<br>
 [["CHUNK"], [320]]      # 每幀長度(Hz)
 [["AllowDelay"], [6]]   # 允許延遲(幀)
 ```
+如果需要在多個裝置間同步音量請參考:<br>
+https://github.com/XPRAMT/Device-Volume-Sync
