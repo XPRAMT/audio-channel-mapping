@@ -13,7 +13,6 @@ def StartStream(output_devices,input_device,output_sets,state_queue,AllowDelay):
     # 輸入處理
     def callback_input(data_write_queues,InputChannels):
         def callback_A(in_data, frame_count, time_info, status):
-            # bytes>np.array
             indata = np.frombuffer(in_data, dtype=np.int32)
             indata = np.reshape(indata, (CHUNK, InputChannels))
             for write_queues in data_write_queues:
@@ -21,14 +20,14 @@ def StartStream(output_devices,input_device,output_sets,state_queue,AllowDelay):
             return (in_data, pyaudio.paContinue)
         return callback_A
     # 輸出處理
-    def callback_output(write_queues,channel_num,channel_sets,CHUNKFix):
+    def callback_output(write_queues,channel_num,channel_sets,CHUNKFix,):
         def callback_B(in_data, frame_count, time_info, status):
             # 分離聲道
             outdata = np.zeros((CHUNKFix,channel_num),dtype=np.int32)
-            if not write_queues.empty(): #不為空
+            if not isStop:
                 indata = write_queues.get()
-                for j,channel in enumerate(channel_sets): # channel
-                    if channel:
+                for j,channel in enumerate(channel_sets): #  channel
+                    if channel and indata.size > 0:
                         ch = channel[0] - 1
                         if CHUNK/CHUNKFix == 1:     #原始
                             outdata[:,j] = indata[:,ch]
@@ -121,6 +120,8 @@ def StartStream(output_devices,input_device,output_sets,state_queue,AllowDelay):
         stream_input.stop_stream()
         stream_input.close()
         pi.terminate()
+        for write_queues in data_write_queues:
+                write_queues.put(np.array([]))
         for stream in stream_output:
             stream.stop_stream()
             stream.close()
