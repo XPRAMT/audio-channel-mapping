@@ -20,7 +20,7 @@ def StartStream(output_devices,input_device,output_sets,state_queue,AllowDelay):
             return (in_data, pyaudio.paContinue)
         return callback_A
     # 輸出處理
-    def callback_output(write_queues,channel_num,channel_sets,CHUNKFix,):
+    def callback_output(write_queues,channel_num,channel_sets,CHUNKFix):
         def callback_B(in_data, frame_count, time_info, status):
             # 分離聲道
             outdata = np.zeros((CHUNKFix,channel_num),dtype=np.int32)
@@ -41,7 +41,7 @@ def StartStream(output_devices,input_device,output_sets,state_queue,AllowDelay):
                         
             return (outdata, pyaudio.paContinue)
         return callback_B
-    # 清除隊列
+    # 清除隊列/增加延遲
     def Clear_Queen(data_write_queues,AD_Frame):
         Clear = False
         for write_queues in data_write_queues:

@@ -42,6 +42,7 @@ def list_audio_devices():
             device['switch'] = 0
             devices_list.append(device)
     p.terminate()
+    devices_list = sorted(devices_list, key=lambda x: x['name'])
     input_label.setText(f'{input_device["name"]} | {input_device["defaultSampleRate"]/1000}KHz')
     # 建立CheckBoxs
     clear_layout(cbox)
@@ -109,7 +110,7 @@ def OkClicked():
 
 # 自動套用
 def Auto_Apply():
-    global Config,buttons,state_queue,CHUNK,AllowDelay
+    global Config,buttons,state_queue,AllowDelay
     with open(file_name, 'a') as json_file:
             pass
     try:
