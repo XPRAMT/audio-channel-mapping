@@ -9,7 +9,10 @@ import audio
 import queue
 import time
 import sys
+import os
 import ctypes
+import subprocess
+import atexit
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
 ##########參數##########
 Config = [[],[]]
@@ -368,4 +371,16 @@ main_window.setWindowTitle('聲道映射')
 main_window.setWindowIcon(QIcon('C:/APP/@develop/audio-channel-mapping/icon.ico'))
 main_window.show()
 center(main_window)
+# 啟動音量同步程式
+if os.path.exists('vol_sync.exe'):
+    info = subprocess.STARTUPINFO()
+    info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+    info.wShowWindow = 0 #隱藏 0,最小化 6
+    vol_sync = subprocess.Popen(['vol_sync.exe'], startupinfo=info)
+    def cleanup():
+        vol_sync.terminate()  # 嘗試終止子進程
+        vol_sync.wait()       # 等待子進程真正終止
+    atexit.register(cleanup)
+else:
+    pass
 sys.exit(app.exec())
