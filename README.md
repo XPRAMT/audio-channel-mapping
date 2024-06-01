@@ -21,4 +21,4 @@ GUI.pyw<br>
 ```
 如果需要在多個裝置間同步音量請參考:<br>
 https://github.com/XPRAMT/Device-Volume-Sync<br>
-1.7版可以自動啟動vol_sync.exe了，將它與主程式放在同目錄即可
+1.7版可以自動開啟vol_sync.exe了，將它與主程式放在同目錄即可
