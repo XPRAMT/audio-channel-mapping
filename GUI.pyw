@@ -367,7 +367,7 @@ list_audio_devices()
 # 建立視窗
 main_window = QWidget()
 main_window.setLayout(vbox)
-main_window.setWindowTitle('聲道映射')
+main_window.setWindowTitle('聲道映射 v1.7')
 main_window.setWindowIcon(QIcon('C:/APP/@develop/audio-channel-mapping/icon.ico'))
 main_window.show()
 center(main_window)
@@ -381,6 +381,4 @@ if os.path.exists('vol_sync.exe'):
         vol_sync.terminate()  # 嘗試終止子進程
         vol_sync.wait()       # 等待子進程真正終止
     atexit.register(cleanup)
-else:
-    pass
 sys.exit(app.exec())
