@@ -18,6 +18,7 @@ ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.chan
 Config = [[],[]]
 file_name = 'config.json'
 AllowDelay = 20 
+vol_sync_init = 1
 MesgPrintTime = 1000
 list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
 ##########FUN##########
@@ -58,10 +59,7 @@ def list_audio_devices():
 # 掃描
 def ScanClicked():
     audio.Stop()
-    for _ in range(50):
-        if button_start.text() == '開始':
-            break
-        time.sleep(0.1)
+    time.sleep(0.1)
     list_audio_devices()
     clear_layout(Grid)
     state_queue.put([2,'掃描成功'])
@@ -111,32 +109,41 @@ def OkClicked():
                 buttons[i].append(button)
     Auto_Apply()
 
+# 操作config.json
+def config_file(save_config=None):
+    global state_queue
+    with open(file_name, 'a') as json_file:
+        pass
+    if save_config==None:
+        try:
+            with open(file_name, 'r') as json_file:
+                load_config = json.load(json_file)
+        except json.decoder.JSONDecodeError:
+            load_config = [[["Settings"], [AllowDelay],[vol_sync_init]]]
+            state_queue.put([2,'已建立配置檔'])
+            mesg_timer.start(MesgPrintTime)
+    else:
+        load_config = save_config
+    # 將更新後的配置寫回 JSON 文件
+    with open(file_name, 'w') as json_file:
+        json.dump(load_config, json_file)
+    return load_config
+
 # 自動套用
 def Auto_Apply():
     global Config,buttons,state_queue,AllowDelay
-    with open(file_name, 'a') as json_file:
-            pass
-    try:
-        with open(file_name, 'r') as json_file:
-            loaded_config = json.load(json_file)
-        # 更新配置
-        A = None # 檢查是否有已儲存的配置
-        for i,C in enumerate(loaded_config):
-            if set(C[0]) == set(Config[0]):
-                A=i
-            if C[0][0] == 'AllowDelay':
-                AllowDelay = C [1][0]
-        if A != None:
-            for j,i in enumerate(loaded_config[A][1]):
-                buttons_clicked(i,j)
-            state_queue.put([2,'已套用配置'])
-            mesg_timer.start(MesgPrintTime)
-    except json.decoder.JSONDecodeError:
-        loaded_config = [[["AllowDelay"], [AllowDelay]]]
-        # 將更新後的配置寫回 JSON 文件
-        with open(file_name, 'w') as json_file:
-            json.dump(loaded_config, json_file)
-        state_queue.put([2,'已儲存'])
+    loaded_config = config_file()
+    # 更新配置
+    A = None # 檢查是否有已儲存的配置
+    for i,C in enumerate(loaded_config):
+        if set(C[0]) == set(Config[0]):
+            A=i
+        if C[0][0] == 'Settings':
+            AllowDelay = C [1][0]
+    if A != None:
+        for j,i in enumerate(loaded_config[A][1]):
+            buttons_clicked(i,j)
+        state_queue.put([2,'已套用配置'])
         mesg_timer.start(MesgPrintTime)
 
 # 接線按鈕
@@ -166,11 +173,18 @@ def StarClicked():
             D = (device['defaultSampleRate'] != All_Devices[i]['defaultSampleRate'])
             if A or B or C or D:
                 p2.terminate()
-                return False
+                return True
         p2.terminate()
-        return True
+        return False
 
-    if (Grid.count() != 0) and Check_Devices():
+    if (Grid.count() == 0):
+        state_queue.put([2,'請先佈局'])
+        mesg_timer.start(MesgPrintTime)
+    elif Check_Devices():
+        state_queue.put([2,'裝置變化,重新掃描'])
+        mesg_timer.start(MesgPrintTime)
+        rescan_timer.start(500)
+    else:
         audio.Stop()
         output_sets = []
         for i in range(len(devices_list)):
@@ -188,10 +202,6 @@ def StarClicked():
         t.daemon = True 
         t.start()
         mesg_timer.start(MesgPrintTime)
-    else:
-        state_queue.put([2,'裝置變化,重新掃描'])
-        mesg_timer.start(MesgPrintTime)
-        rescan_timer.start(500)
 
 # 儲存按鈕
 def SaveClicked():
@@ -203,52 +213,66 @@ def SaveClicked():
                 if button:
                     if button.text() == 'on':
                         Config[1][j] = i
-        
-        with open(file_name, 'a') as json_file:
-            pass
-        try:
-            with open(file_name, 'r') as json_file:
-                loaded_config = json.load(json_file)
-            # 更新配置
-            A = None # 檢查是否有已儲存的配置
-            for i,C in enumerate(loaded_config):
-                if set(C[0]) == set(Config[0]):
-                    A=i
-            if A == None:
-                loaded_config.append(Config)
-            else:
-                loaded_config[i][1] = Config[1]
-        except json.decoder.JSONDecodeError:
-            loaded_config = [[["AllowDelay"], [AllowDelay]]]
-        # 將更新後的配置寫回 JSON 文件
-        with open(file_name, 'w') as json_file:
-            json.dump(loaded_config, json_file)
-        state_queue.put([2,'已儲存'])
-        mesg_timer.start(MesgPrintTime)
-
-# 刪除按鈕
-def DelClicked():
-    global Config,state_queue
-    with open(file_name, 'a') as json_file:
-            pass
-    try:
-        with open(file_name, 'r') as json_file:
-            loaded_config = json.load(json_file)
+       
+        loaded_config = config_file()
         # 更新配置
         A = None # 檢查是否有已儲存的配置
         for i,C in enumerate(loaded_config):
             if set(C[0]) == set(Config[0]):
                 A=i
-        if A != None:
-            del loaded_config[A]
-            state_queue.put([2,'已刪除'])
-            mesg_timer.start(MesgPrintTime)
-    except json.decoder.JSONDecodeError:
-        loaded_config = [[["AllowDelay"], [AllowDelay]]]
+        if A == None:
+            loaded_config.append(Config)
+        else:
+            loaded_config[i][1] = Config[1]
+        # 將更新後的配置寫回 JSON 文件
+        config_file(loaded_config)
+        state_queue.put([2,'已儲存'])
+        mesg_timer.start(MesgPrintTime)
+    else:
+        state_queue.put([2,'請先佈局'])
+        mesg_timer.start(MesgPrintTime)
+
+# 刪除按鈕
+def DelClicked():
+    global Config,state_queue
+    loaded_config = config_file()
+    # 更新配置
+    A = None # 檢查是否有已儲存的配置
+    for i,C in enumerate(loaded_config):
+        if set(C[0]) == set(Config[0]):
+            A=i
+    if A != None:
+        del loaded_config[A]
     # 將更新後的配置寫回 JSON 文件
-    with open(file_name, 'w') as json_file:
-        json.dump(loaded_config, json_file)
-    
+    config_file(loaded_config)
+    state_queue.put([2,'已刪除'])
+    mesg_timer.start(MesgPrintTime)
+
+# 音量同步按鈕
+def VolSync():
+    global VolSync_state,vol_sync
+    if os.path.exists('vol_sync.exe'):
+        def cleanup():
+            vol_sync.terminate()  # 嘗試終止子進程
+            vol_sync.wait()       # 等待子進程真正終止
+        atexit.register(cleanup)
+
+        if VolSync_state==False:
+            info = subprocess.STARTUPINFO()
+            info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            info.wShowWindow = 0 #隱藏 0,最小化 6
+            vol_sync = subprocess.Popen(['vol_sync.exe'], startupinfo=info)
+            VolSync_state=True
+            button_volsync.setStyleSheet('color: white')
+            state_queue.put([2,'啟動音量同步'])
+            mesg_timer.start(MesgPrintTime)
+        else:
+            cleanup()
+            VolSync_state=False
+            button_volsync.setStyleSheet('color: red')
+            state_queue.put([2,'停止音量同步'])
+            mesg_timer.start(MesgPrintTime)
+
 # 清除layout
 def clear_layout(layout):
         # 移除 layout 中的所有子項目
@@ -267,7 +291,10 @@ def updateChanged(state_queue):
             case 0: # 持續狀態
                 status_label.setText(parameter[1])
             case 1: # 開始按鈕
-                button_start.setText(parameter[1])
+                if parameter[1]:
+                    button_start.setStyleSheet('color: red')
+                else:
+                    button_start.setStyleSheet('color: white')
             case 2: # 短暫通知
                 mesg_label.setText(parameter[1])
 
@@ -310,9 +337,10 @@ hbox.addWidget(button_scan)
 button_ok = QPushButton('布局')
 button_ok.clicked.connect(OkClicked)
 hbox.addWidget(button_ok)
-# 建立開始停止按鈕
-button_start = QPushButton('開始')
+# 建立映射按鈕
+button_start = QPushButton('映射')
 button_start.clicked.connect(StarClicked)
+button_start.setStyleSheet('color: red')
 hbox.addWidget(button_start)
 # 建立水平佈局管理器2
 hbox2 = QHBoxLayout()
@@ -328,6 +356,12 @@ hbox2.addWidget(button_Save)
 button_del = QPushButton('刪除配置')
 button_del.clicked.connect(DelClicked)
 hbox2.addWidget(button_del)
+# 建立音量同步按鈕
+button_volsync = QPushButton('音量同步')
+button_volsync.clicked.connect(VolSync)
+button_volsync.setStyleSheet('color: red')
+hbox2.addWidget(button_volsync)
+VolSync_state=False
 # 建立一個網格佈局管理器
 Grid = QGridLayout()
 Grid.setContentsMargins(0, 0, 0, 0)
@@ -364,21 +398,16 @@ t2.daemon = True
 t2.start()
 # 添加置裝
 list_audio_devices()
+# 啟動音量同步程式
+loaded_config = config_file()
+if loaded_config[0][0][0] == 'Settings':
+    if loaded_config [0][2][0] == 1:
+        VolSync()
 # 建立視窗
 main_window = QWidget()
 main_window.setLayout(vbox)
-main_window.setWindowTitle('聲道映射 v1.7')
+main_window.setWindowTitle('聲道映射 v1.8')
 main_window.setWindowIcon(QIcon('C:/APP/@develop/audio-channel-mapping/icon.ico'))
 main_window.show()
 center(main_window)
-# 啟動音量同步程式
-if os.path.exists('vol_sync.exe'):
-    info = subprocess.STARTUPINFO()
-    info.dwFlags = subprocess.STARTF_USESHOWWINDOW
-    info.wShowWindow = 0 #隱藏 0,最小化 6
-    vol_sync = subprocess.Popen(['vol_sync.exe'], startupinfo=info)
-    def cleanup():
-        vol_sync.terminate()  # 嘗試終止子進程
-        vol_sync.wait()       # 等待子進程真正終止
-    atexit.register(cleanup)
 sys.exit(app.exec())

@@ -55,7 +55,8 @@ def StartStream(output_devices,input_device,output_sets,state_queue,AllowDelay):
 
     if not isStart:
         isStart = True
-        state_queue.put([1,'停止'])
+        state_queue.put([1,False]) #更改按鈕文字為停止
+        state_queue.put([2,'啟動映射'])
         # 輸入聲道,samplerate
         InputChannel = input_device['maxInputChannels']
         InputRate = int(input_device['defaultSampleRate'])
@@ -129,5 +130,5 @@ def StartStream(output_devices,input_device,output_sets,state_queue,AllowDelay):
             po.terminate()
         isStart = False
         state_queue.put([0,''])
-        state_queue.put([1,'開始'])
-        state_queue.put([2,'已停止'])
+        state_queue.put([1,True]) #更改按鈕文字為開始
+        state_queue.put([2,'停止映射'])
