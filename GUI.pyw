@@ -251,27 +251,26 @@ def DelClicked():
 # 音量同步按鈕
 def VolSync():
     global VolSync_state,vol_sync
-    if os.path.exists('vol_sync.exe'):
-        def cleanup():
-            vol_sync.terminate()  # 嘗試終止子進程
-            vol_sync.wait()       # 等待子進程真正終止
-        atexit.register(cleanup)
+    def cleanup():
+        vol_sync.terminate()  # 嘗試終止子進程
+        vol_sync.wait()       # 等待子進程真正終止
+    atexit.register(cleanup)
 
-        if VolSync_state==False:
-            info = subprocess.STARTUPINFO()
-            info.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            info.wShowWindow = 0 #隱藏 0,最小化 6
-            vol_sync = subprocess.Popen(['vol_sync.exe'], startupinfo=info)
-            VolSync_state=True
-            button_volsync.setStyleSheet('color: white')
-            state_queue.put([2,'啟動音量同步'])
-            mesg_timer.start(MesgPrintTime)
-        else:
-            cleanup()
-            VolSync_state=False
-            button_volsync.setStyleSheet('color: red')
-            state_queue.put([2,'停止音量同步'])
-            mesg_timer.start(MesgPrintTime)
+    if VolSync_state==False:
+        info = subprocess.STARTUPINFO()
+        info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = 0 #隱藏 0,最小化 6
+        vol_sync = subprocess.Popen(["C:\\APP\\@develop\\Device-Volume-Sync\\vol_sync.exe"], startupinfo=info)
+        VolSync_state=True
+        button_volsync.setStyleSheet('color: white')
+        state_queue.put([2,'啟動音量同步'])
+        mesg_timer.start(MesgPrintTime)
+    else:
+        cleanup()
+        VolSync_state=False
+        button_volsync.setStyleSheet('color: red')
+        state_queue.put([2,'停止音量同步'])
+        mesg_timer.start(MesgPrintTime)
 
 # 清除layout
 def clear_layout(layout):
