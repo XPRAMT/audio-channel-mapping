@@ -1,4 +1,6 @@
-﻿numpy
+﻿comtypes
+numpy
+pycaw
 PyQt6
 PyAudioWPatch
 pyinstaller
