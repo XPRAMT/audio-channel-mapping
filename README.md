@@ -1,3 +1,4 @@
+[中文](https://github.com/XPRAMT/audio-channel-mapping/blob/main/README_TW.md)
 ### feature
 You can map any input channel to any output device channel.<br>
 In simple terms, this means you can use multiple Bluetooth speakers to create a home theater.<br>
