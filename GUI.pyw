@@ -1,4 +1,4 @@
-﻿from PyQt6 import QtWidgets,QtCore,QtGui
+from PyQt6 import QtWidgets,QtCore,QtGui
 from functools import partial
 import pyaudiowpatch as pyaudio
 import json
@@ -9,6 +9,7 @@ import queue
 import time
 import sys
 import ctypes
+import winreg
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
 ##########參數##########
 Config = [[],[]]
@@ -37,26 +38,38 @@ def ScanClicked():
         time.sleep(0.1)
     list_audio_devices()
     clear_layout(Grid)
-    state_queue.put([2,'掃描成功'])
+    state_queue.put([2,app.translate("", "Scan successful")])
     mesg_timer.start(MesgPrintTime)
+    
+# 切換輸入來源
+input_class_loopback = True
+def switch_input_device():
+    global input_class_loopback
+    input_class_loopback = not input_class_loopback
+    ScanClicked()
 
 # 列出音訊裝置
 def list_audio_devices():
-    global input_loopback,devices_list,CheckBoxs,VolSlider,All_Devices,Vol_settings
+    global input_device,devices_list,CheckBoxs,VolSlider,All_Devices,Vol_settings
     # 獲取裝置
     p = pyaudio.PyAudio()
-    input_loopback = p.get_default_wasapi_loopback()
-    input_device = p.get_default_wasapi_device(d_out = True)
+    if input_class_loopback:
+        input_device = p.get_default_wasapi_loopback()
+        input_device_name = input_device['name'].replace(" [Loopback]","")
+    else:
+        input_device = p.get_default_wasapi_device()
+        input_device_name = input_device['name']
+
     devices_list = []
     All_Devices = []
     for device in p.get_device_info_generator_by_host_api(host_api_index=2):
         All_Devices.append(device)
-        if (device['maxOutputChannels'] > 0) and (device['index'] != input_device['index']):
+        if (device['maxOutputChannels'] > 0) and (device['name'] != input_device_name):
             device['switch'] = 0
             devices_list.append(device)
     p.terminate()
     devices_list = sorted(devices_list, key=lambda x: x['name'])
-    input_label.setText(f'{input_device["name"]} | {input_device["defaultSampleRate"]/1000}KHz')
+    input_label.setText(f'{input_device_name} | {input_device["defaultSampleRate"]/1000}KHz')
     # 建立CheckBoxs
     clear_layout(cbox)
     CheckBoxs = {}
@@ -106,7 +119,7 @@ def OkClicked():
                 table.append([i,c])
 
     # 生成list_Col
-    for i in range(input_loopback['maxInputChannels']):
+    for i in range(input_device['maxInputChannels']):
         list_Col.append(list_input[i])
     # 生成按鈕
     Devices_Label = {}
@@ -143,7 +156,7 @@ def config_file(save_config=None):
                 load_config = json.load(json_file)
         except json.decoder.JSONDecodeError:
             load_config = [[["Settings"],[AllowDelay]]]
-            state_queue.put([2,'已建立配置檔'])
+            state_queue.put([2,app.translate("", "Config created")])
             mesg_timer.start(MesgPrintTime)
     else:
         load_config = save_config
@@ -167,7 +180,7 @@ def Auto_Apply():
         for j,i in enumerate(loaded_config[A][1]):
             if (i*j > 0) and (i < len(list_Col)) and (j < len(list_Row)):
                 buttons[i][j].setValue(100)
-        state_queue.put([2,'已套用配置'])
+        state_queue.put([2,app.translate("", "Applied config")])
         mesg_timer.start(MesgPrintTime)
 
 # 接線按鈕
@@ -208,16 +221,16 @@ def StarClicked():
         return False
 
     if (Grid.count() == 0):
-        state_queue.put([2,'請先佈局'])
+        state_queue.put([2,app.translate("", "Please layout first")])
         mesg_timer.start(MesgPrintTime)
     elif Check_Devices():
-        state_queue.put([2,'裝置變化,重新掃描'])
+        state_queue.put([2,app.translate("", "Device change, rescan")])
         mesg_timer.start(MesgPrintTime)
         rescan_timer.start(500)
     else:
         a_mapping.Stop()
         SentUpdate()
-        t_args = (devices_list,input_loopback,state_queue,AllowDelay)
+        t_args = (devices_list,input_device,state_queue,AllowDelay)
         t = threading.Thread(target=a_mapping.StartStream,args=t_args)
         t.daemon = True 
         t.start()
@@ -246,10 +259,10 @@ def SaveClicked():
             loaded_config[A][1] = Config[1]
         # 將更新後的配置寫回 JSON 文件
         config_file(loaded_config)
-        state_queue.put([2,'已儲存'])
+        state_queue.put([2,app.translate("", "Saved")])
         mesg_timer.start(MesgPrintTime)
     else:
-        state_queue.put([2,'請先佈局'])
+        state_queue.put([2,app.translate("", "Please layout first")])
         mesg_timer.start(MesgPrintTime)
 
 # 刪除按鈕
@@ -265,7 +278,7 @@ def DelClicked():
         del loaded_config[A]
     # 將更新後的配置寫回 JSON 文件
     config_file(loaded_config)
-    state_queue.put([2,'已刪除'])
+    state_queue.put([2,app.translate("", "Deleted")])
     mesg_timer.start(MesgPrintTime)
 
 # 清除layout
@@ -297,9 +310,9 @@ def updateChanged(state_queue):
             case 1: # 開始按鈕
                 Mapping_State = parameter[1]
                 if Mapping_State:
-                    button_start.setText('停止')
+                    button_start.setText(app.translate("", "Stop"))
                 else:
-                    button_start.setText('啟動')
+                    button_start.setText(app.translate("", "Start"))
             case 2: # 短暫通知
                 mesg_label.setText(parameter[1])
                 '''
@@ -308,9 +321,31 @@ def updateChanged(state_queue):
             case 4: # vol
                 Vol_labelB.setText(parameter[1])
             '''
+# 獲取系統語言
+def get_display_language():
+    try:
+        # 註冊表鍵
+        sub_key = r"Control Panel\International\User Profile"
+        value_name = "Languages"
+        # 打開註冊表鍵
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key) as registry_key:
+            # 讀取多重字符串（MULTI_SZ）類型的值
+            value, _ = winreg.QueryValueEx(registry_key, value_name)
+        # 返回多重字符串中的第一個語言
+        if value:
+            return value[0]  # 返回第一個語言
+    except WindowsError:
+        return "Error" 
 ##########初始化##########
 app = QtWidgets.QApplication(sys.argv)
 app.setStyle('Fusion')
+# 檢測系統語言
+system_locale = get_display_language()
+print(system_locale)
+# 創建翻譯器
+translator = QtCore.QTranslator()
+if translator.load(f"{system_locale}.qm"):
+    app.installTranslator(translator)
 # 設定深色主題
 dark_palette = QtGui.QPalette()
 dark_palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor(0, 0, 0))
@@ -339,18 +374,6 @@ hbox.setContentsMargins(0, 0, 0, 0)
 hbox_container = QtWidgets.QWidget()
 hbox_container.setLayout(hbox)
 vbox.addWidget(hbox_container)
-# 建立scan按鈕
-button_scan = QtWidgets.QPushButton('掃描')
-button_scan.clicked.connect(ScanClicked)
-hbox.addWidget(button_scan)
-# 建立ok按鈕
-button_ok = QtWidgets.QPushButton('布局')
-button_ok.clicked.connect(OkClicked)
-hbox.addWidget(button_ok)
-# 建立映射按鈕
-button_start = QtWidgets.QPushButton('啟動')
-button_start.clicked.connect(StarClicked)
-hbox.addWidget(button_start)
 # 建立水平佈局管理器2
 hbox2 = QtWidgets.QHBoxLayout()
 hbox2.setContentsMargins(0, 0, 0, 0)
@@ -358,13 +381,29 @@ hbox2_container = QtWidgets.QWidget()
 hbox2_container.setLayout(hbox2)
 vbox.addWidget(hbox2_container)
 # 建立儲存按鈕
-button_Save = QtWidgets.QPushButton('儲存配置')
+button_Save = QtWidgets.QPushButton(app.translate("", "Save"))
 button_Save.clicked.connect(SaveClicked)
-hbox2.addWidget(button_Save)
+hbox.addWidget(button_Save)
 # 建立刪除按鈕
-button_del = QtWidgets.QPushButton('刪除配置')
+button_del = QtWidgets.QPushButton(app.translate("", "Delete"))
 button_del.clicked.connect(DelClicked)
-hbox2.addWidget(button_del)
+hbox.addWidget(button_del)
+# 建立輸入裝置切換按鈕
+button_switch = QtWidgets.QPushButton(app.translate("", "Switch"))
+button_switch.clicked.connect(switch_input_device)
+hbox.addWidget(button_switch)
+# 建立scan按鈕
+button_scan = QtWidgets.QPushButton(app.translate("", "Scan"))
+button_scan.clicked.connect(ScanClicked)
+hbox2.addWidget(button_scan)
+# 建立ok按鈕
+button_ok = QtWidgets.QPushButton(app.translate("", "Layout"))
+button_ok.clicked.connect(OkClicked)
+hbox2.addWidget(button_ok)
+# 建立映射按鈕
+button_start = QtWidgets.QPushButton(app.translate("", "Start"))
+button_start.clicked.connect(StarClicked)
+hbox2.addWidget(button_start)
 # 建立一個網格佈局管理器
 Grid = QtWidgets.QGridLayout()
 Grid.setContentsMargins(0, 0, 0, 0)
@@ -409,7 +448,7 @@ list_audio_devices()
 # 建立視窗
 main_window = QtWidgets.QWidget()
 main_window.setLayout(vbox)
-main_window.setWindowTitle('聲道映射 v2.0')
+main_window.setWindowTitle(app.translate("", "Audio Mapping")+' v2.1')
 main_window.setWindowIcon(QtGui.QIcon('C:/APP/@develop/audio-channel-mapping/icon.ico')) 
 main_window.show()
 center(main_window)

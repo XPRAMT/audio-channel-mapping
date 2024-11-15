@@ -68,7 +68,7 @@ def StartStream(output_devices,input_device,state_queue,AllowDelay):
     if not isStart:
         isStart = True
         state_queue.put([1,True]) #運作狀態
-        state_queue.put([2,'啟動映射'])
+        state_queue.put([2,'Start mapping'])
         # 輸入聲道,samplerate
         InputChannel = input_device['maxInputChannels']
         InputRate = int(input_device['defaultSampleRate'])
@@ -116,7 +116,8 @@ def StartStream(output_devices,input_device,state_queue,AllowDelay):
                             stream_callback=callback_input(data_write_queues,InputChannel))
         Resample_msg = ''
         if Resample:
-            Resample_msg = f' 重採樣,音質受損!'
+            #Resample_msg = f' 重採樣,音質受損!'
+            Resample_msg = f',Resampling!'
         # 等待停止&清空隊列
         isStop = False
         while not isStop:
@@ -127,9 +128,10 @@ def StartStream(output_devices,input_device,state_queue,AllowDelay):
             else:
                 if Clear_Queen(data_write_queues,AD_Frame):
                     AD_Frame+=1
-                    state_queue.put([2,f'已降低延遲'])
-                state_queue.put([0,f'幀長度:{CHUNK}Hz,允許延遲:{AD_Frame}幀({round(AD_Frame*Frametime)}ms){Resample_msg}'])
-                
+                    state_queue.put([2,f'Latency reduced'])
+                #state_queue.put([0,f'幀長度:{CHUNK}Hz,允許延遲:{AD_Frame}幀({round(AD_Frame*Frametime)}ms){Resample_msg}'])
+                state_queue.put([0,f'Allow delay:{round(AD_Frame*Frametime)}ms{Resample_msg}'])
+
         # 結束處理
         stream_input.stop_stream()
         stream_input.close()
@@ -144,4 +146,4 @@ def StartStream(output_devices,input_device,state_queue,AllowDelay):
         isStart = False
         state_queue.put([0,''])
         state_queue.put([1,False]) #運作狀態
-        state_queue.put([2,'停止映射'])
+        state_queue.put([2,'Stop mapping'])
