@@ -1,12 +1,14 @@
 from PyQt6 import QtWidgets,QtCore,QtGui
 from functools import partial
 import pyaudiowpatch as pyaudio
+import time
 import json
+import queue
 import threading
+import a_shared
 import a_mapping
 import a_volume
-import queue
-import time
+import a_server
 import sys
 import ctypes
 import winreg
@@ -14,9 +16,14 @@ ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.chan
 ##########參數##########
 Config = [[],[]]
 file_name = 'config.json'
-AllowDelay = 20 
-MesgPrintTime = 1000
+CheckBoxs = {}
+VolSlider = {}
 list_input = ['FL','FR','CNT','SW','SL','SR','SBL','SBR']
+TextKeys = [
+    "Save", "Delete", "Switch", "Scan", "Layout",
+    "Start", "Stop","Audio Mapping"]
+##########FLAG#########
+input_class_loopback = True
 ##########FUN##########
 #視窗置中
 def center(self):
@@ -30,98 +37,131 @@ def center(self):
 
 # 掃描
 def ScanClicked():
-    global Mapping_State
-    a_mapping.Stop()
-    for _ in range(50):
-        if not Mapping_State:
-            break
-        time.sleep(0.1)
-    list_audio_devices()
-    clear_layout(Grid)
-    state_queue.put([2,app.translate("", "Scan successful")])
-    mesg_timer.start(MesgPrintTime)
+    if a_shared.ScanColDown:
+        return
+    else:
+        a_volume.Stop = True
+        if a_mapping.isRunning:
+            a_mapping.Start = False
+            while a_mapping.isRunning == True:
+                time.sleep(0.1)
+            a_shared.ScanColDown = True
+            list_audio_devices()
+            MappingClicked()
+        else:
+            list_audio_devices()
+        ShortMesg.put(app.translate("", "Scan successful"))
     
-# 切換輸入來源
-input_class_loopback = True
-def switch_input_device():
+# 切換輸入類型
+def switch_inputDev():
     global input_class_loopback
     input_class_loopback = not input_class_loopback
     ScanClicked()
+    print("\n[INFO] 已切換輸入類型",end='\r')
 
 # 列出音訊裝置
 def list_audio_devices():
-    global input_device,devices_list,CheckBoxs,VolSlider,All_Devices,Vol_settings
-    # 獲取裝置
+    global inputDev,CheckBoxs,VolSlider,allDevList
+    # 輸入裝置
+    MainVol,_ = a_volume.Mainvol()
     p = pyaudio.PyAudio()
-    if input_class_loopback:
-        input_device = p.get_default_wasapi_loopback()
-        input_device_name = input_device['name'].replace(" [Loopback]","")
+    if input_class_loopback: #設定輸入裝置
+        inputDev = p.get_default_wasapi_loopback()
+        a_shared.inputDevName = inputDev['name'].replace(" [Loopback]","")
     else:
-        input_device = p.get_default_wasapi_device()
-        input_device_name = input_device['name']
-
-    devices_list = []
-    All_Devices = []
+        inputDev = p.get_default_wasapi_device()
+        a_shared.inputDevName = inputDev['name']
+    inputDev.update({
+        'name': a_shared.inputDevName,'switch': True,
+        'IP': None,'volume': MainVol
+    })
+    a_shared.AllDevS = {}
+    a_shared.AllDevS[a_shared.inputDevName]=inputDev
+    # 輸出裝置
+    allDevList = []
+    outputDev = {}
     for device in p.get_device_info_generator_by_host_api(host_api_index=2):
-        All_Devices.append(device)
-        if (device['maxOutputChannels'] > 0) and (device['name'] != input_device_name):
-            device['switch'] = 0
-            devices_list.append(device)
+        allDevList.append(device)
+        if (device['maxOutputChannels'] > 0) and (device['name'] != a_shared.inputDevName):
+            device.update({
+                'switch': False,'IP': None,'volume': 1.0
+            })
+            outputDev[device['name']] = device
     p.terminate()
-    devices_list = sorted(devices_list, key=lambda x: x['name'])
-    input_label.setText(f'{input_device_name} | {input_device["defaultSampleRate"]/1000}KHz')
-    # 建立CheckBoxs
+    # 網路裝置
+    for IP in a_server.connected_clients:
+        netdevice = {
+            'maxOutputChannels': 2,'switch': False ,'name':f"IP:{IP}",
+            'IP':IP,'defaultSampleRate':inputDev['defaultSampleRate'],'volume':1.0
+        }
+        outputDev[IP] = netdevice
+    a_shared.AllDevS.update({k: outputDev[k] for k in sorted(outputDev)})
+    # 建立裝置UI
+    clear_layout(Grid)
     clear_layout(cbox)
+    tmpCkBoxs = CheckBoxs
+    tmpSlider = VolSlider
     CheckBoxs = {}
-    VolSlider={}
-    Vol_settings=[]
-    for i,device in enumerate(devices_list):
-        CheckBoxs[i] = QtWidgets.QCheckBox()
-        CheckBoxs[i].setText(f'{i+1}.{device["name"]} | {device["defaultSampleRate"]/1000}KHz')
-        CheckBoxs[i].clicked.connect(SetVolume)
-        cbox.addWidget(CheckBoxs[i])
+    VolSlider = {}
+    def buildVolSlider(name,vol):
+        VolSlider[name] = QtWidgets.QSlider()
+        VolSlider[name].setOrientation(QtCore.Qt.Orientation.Horizontal)
+        VolSlider[name].setRange(0,100)
+        VolSlider[name].setValue(int(vol*100))
+        VolSlider[name].valueChanged.connect(partial(SetVolSlider,name))
+        cbox.addWidget(VolSlider[name])
+    for i,(devName, device) in enumerate(a_shared.AllDevS.items()):
+        if devName == a_shared.inputDevName: # 輸入裝置UI
+            input_label.setText(f'{a_shared.inputDevName} | {inputDev["defaultSampleRate"]/1000}KHz')
+            CheckBoxs[a_shared.inputDevName] = QtWidgets.QCheckBox()
+        else: # 輸出裝置UI
+            CheckBoxs[devName] = QtWidgets.QCheckBox()
+            CheckBoxs[devName].setText(f'{i}.{device["name"]} | {device["defaultSampleRate"]/1000}KHz')
+            CheckBoxs[devName].clicked.connect(partial(SetCheckBoxs,devName))
+            cbox.addWidget(CheckBoxs[devName])
         # 音量條
-        VolSlider[i] = QtWidgets.QSlider()
-        VolSlider[i].setOrientation(QtCore.Qt.Orientation.Horizontal)
-        VolSlider[i].setRange(0,100)
-        VolSlider[i].setValue(100)
-        VolSlider[i].valueChanged.connect(SetVolume)
-        cbox.addWidget(VolSlider[i])
-        Vol_settings.append([device["name"],VolSlider[i].value()/100,False])
-    # 音量同步線程
-    a_volume.Stop()
-    vol_thread = threading.Thread(target=a_volume.VolumeSync)
-    vol_thread.daemon = True 
-    vol_thread.start()
+        buildVolSlider(devName,device['volume'])
     
+    # 套用上次狀態
+    for i,SliderName in enumerate(tmpSlider):
+        if (i!=0) and (SliderName in VolSlider):
+            VolSlider[SliderName].setValue(tmpSlider[SliderName].value())
+    isTmp = False
+    for i,CkBoxName in enumerate(tmpCkBoxs):
+        if tmpCkBoxs[CkBoxName].isChecked() and (i!=0) and (CkBoxName in CheckBoxs):
+            CheckBoxs[CkBoxName].setChecked(True)
+            a_shared.AllDevS[CkBoxName]['switch'] = True
+            isTmp = True
+    if isTmp:
+        LayoutClicked()
+        
 # 布局
-def OkClicked():
-    global table,output_sets,buttons,devices_list,list_Col,list_Row
+def LayoutClicked():
+    global table,outputSets,buttons,list_Col,list_Row,outputDevList
     clear_layout(Grid)
     list_Row = ['i\o']
     list_Col = ['']
     Config[0] = [] 
-    for i in range(len(devices_list)):
-        if CheckBoxs[i].isChecked():
-            devices_list[i]['switch'] = 1
-            Config[0].append(devices_list[i]['name'])
-        else:
-            devices_list[i]['switch'] = 0
-            
+    for devName, device in a_shared.AllDevS.items():
+        if device['switch'] and device['maxOutputChannels'] > 0:
+            Config[0].append(devName)
+
     table = [] # j對應device,channel
-    output_sets = []
-    for i in range(len(devices_list)):
-        channel = [[] for _ in range(devices_list[i]['maxOutputChannels'])]
-        output_sets.append(channel) 
-        if devices_list[i]['switch'] == 1:
-            for c in range(devices_list[i]['maxOutputChannels']): #c=channel num
+    outputSets = []
+    # 產生outputDevList
+    filteredDict = {k: v for k, v in a_shared.AllDevS.items() if k != a_shared.inputDevName}
+    outputDevList = list(filteredDict.values())
+    for i in range(len(outputDevList)):
+        channel = [[] for _ in range(outputDevList[i]['maxOutputChannels'])]
+        outputSets.append(channel) 
+        if outputDevList[i]['switch'] == 1:
+            for c in range(outputDevList[i]['maxOutputChannels']): #c=channel num
                 list_Row.append(f'dev{i+1}: {list_input[c]}')
                 table.append([i,c])
-
     # 生成list_Col
-    for i in range(input_device['maxInputChannels']):
+    for i in range(inputDev['maxInputChannels']):
         list_Col.append(list_input[i])
-    # 生成按鈕
+    # 生成滑條
     Devices_Label = {}
     buttons = []
     for i in range(len(list_Col)):
@@ -144,30 +184,17 @@ def OkClicked():
                 Grid.addWidget(button, i, j)
                 buttons[i].append(button)
     Auto_Apply()
-
-# 操作config.json
-def config_file(save_config=None):
-    global state_queue
-    with open(file_name, 'a') as json_file:
-        pass
-    if save_config==None:
-        try:
-            with open(file_name, 'r') as json_file:
-                load_config = json.load(json_file)
-        except json.decoder.JSONDecodeError:
-            load_config = [[["Settings"],[AllowDelay]]]
-            state_queue.put([2,app.translate("", "Config created")])
-            mesg_timer.start(MesgPrintTime)
-    else:
-        load_config = save_config
-    # 將更新後的配置寫回 JSON 文件
-    with open(file_name, 'w') as json_file:
-        json.dump(load_config, json_file)
-    return load_config
+    SentUpdate()
+    # 恢復播放狀態
+    if a_mapping.isRunning:
+        a_mapping.Start = False
+        while a_mapping.isRunning == True:
+            time.sleep(0.1)
+        MappingClicked()
 
 # 自動套用
 def Auto_Apply():
-    global Config,buttons,state_queue,AllowDelay
+    global Config,buttons
     loaded_config = config_file()
     # 更新配置
     A = None # 檢查是否有已儲存的配置
@@ -175,13 +202,20 @@ def Auto_Apply():
         if set(C[0]) == set(Config[0]):
             A=i
         if C[0][0] == 'Settings':
-            AllowDelay = C [1][0]
+            a_mapping.AllowDelay = C [1][0]
     if A != None:
         for j,i in enumerate(loaded_config[A][1]):
             if (i*j > 0) and (i < len(list_Col)) and (j < len(list_Row)):
                 buttons[i][j].setValue(100)
-        state_queue.put([2,app.translate("", "Applied config")])
-        mesg_timer.start(MesgPrintTime)
+        ShortMesg.put(app.translate("", "Applied config"))
+
+# 設定裝置音量
+def SetVolSlider(devName):
+        a_shared.AllDevS[devName]['volume'] = VolSlider[devName].value()/100
+def SetCheckBoxs(devName):
+        a_shared.AllDevS[devName]['switch'] = CheckBoxs[devName].isChecked()
+def SetGUIMainVol(vol):
+    VolSlider[a_shared.inputDevName].setValue(vol)
 
 # 接線按鈕
 def buttons_clicked(i,j):
@@ -194,26 +228,29 @@ def buttons_clicked(i,j):
 
 # 更新狀態(發送)
 def SentUpdate():
-    global output_sets,output_vol,buttons
+    global outputSets,buttons
     for i,row_btns in enumerate(buttons):
                 for j,button in enumerate(row_btns):
                     if button:
                         if button.value() >= 0:
                             #[device][out channel].append(in channel)
-                            output_sets[table[j-1][0]][table[j-1][1]]=[i,button.value()/100] 
-    a_mapping.Receive(output_sets)
+                            outputSets[table[j-1][0]][table[j-1][1]]=[i,button.value()/100] 
+    a_mapping.Receive(outputSets)
 
-# 開始按鈕
-def StarClicked():
-    global table,devices_list,Grid,All_Devices
+# 開始/停止按鈕
+def MappingClicked():
+    global table,Grid,inputDev,allDevList,outputDevList
+    if a_mapping.isRunning: # 如果正在運作就停止
+        a_mapping.Start = False
+        return
 
     def Check_Devices():
         p2 = pyaudio.PyAudio()
         for i,device in enumerate(p2.get_device_info_generator_by_host_api(host_api_index=2)):
-            A = (device['name'] != All_Devices[i]['name'])
-            B = (device['maxOutputChannels'] != All_Devices[i]['maxOutputChannels'])
-            C = (device['maxInputChannels'] != All_Devices[i]['maxInputChannels'])
-            D = (device['defaultSampleRate'] != All_Devices[i]['defaultSampleRate'])
+            A = (device['name'] != allDevList[i]['name'])
+            B = (device['maxOutputChannels'] != allDevList[i]['maxOutputChannels'])
+            C = (device['maxInputChannels'] != allDevList[i]['maxInputChannels'])
+            D = (device['defaultSampleRate'] != allDevList[i]['defaultSampleRate'])
             if A or B or C or D:
                 p2.terminate()
                 return True
@@ -221,24 +258,37 @@ def StarClicked():
         return False
 
     if (Grid.count() == 0):
-        state_queue.put([2,app.translate("", "Please layout first")])
-        mesg_timer.start(MesgPrintTime)
+        ShortMesg.put(app.translate("", "Please layout first"))
     elif Check_Devices():
-        state_queue.put([2,app.translate("", "Device change, rescan")])
-        mesg_timer.start(MesgPrintTime)
-        rescan_timer.start(500)
+        ShortMesg.put(app.translate("", "Device change, rescan"))
+        ScanClicked()
     else:
-        a_mapping.Stop()
         SentUpdate()
-        t_args = (devices_list,input_device,state_queue,AllowDelay)
-        t = threading.Thread(target=a_mapping.StartStream,args=t_args)
-        t.daemon = True 
-        t.start()
-        mesg_timer.start(MesgPrintTime)
+        a_mapping.outputDevList = outputDevList
+        a_mapping.input_device = inputDev
+        a_mapping.Start = True
+
+# 操作config.json
+def config_file(save_config=None):
+    with open(file_name, 'a') as json_file:
+        pass
+    if save_config==None:
+        try:
+            with open(file_name, 'r') as json_file:
+                load_config = json.load(json_file)
+        except json.decoder.JSONDecodeError:
+            load_config = [[["Settings"],[10]]] # AllowDelay = 10
+            ShortMesg.put(app.translate("", "Config created"))
+    else:
+        load_config = save_config
+    # 將更新後的配置寫回 JSON 文件
+    with open(file_name, 'w') as json_file:
+        json.dump(load_config, json_file)
+    return load_config
 
 # 儲存按鈕
 def SaveClicked():
-    global Config,buttons,state_queue
+    global Config,buttons
     if Grid.count() != 0:
         Config[1] = [0] * len(buttons[1])
         for i,row_btns in enumerate(buttons):
@@ -259,15 +309,13 @@ def SaveClicked():
             loaded_config[A][1] = Config[1]
         # 將更新後的配置寫回 JSON 文件
         config_file(loaded_config)
-        state_queue.put([2,app.translate("", "Saved")])
-        mesg_timer.start(MesgPrintTime)
+        ShortMesg.put(app.translate("", "Saved"))
     else:
-        state_queue.put([2,app.translate("", "Please layout first")])
-        mesg_timer.start(MesgPrintTime)
+        ShortMesg.put(app.translate("", "Please layout first"))
 
 # 刪除按鈕
 def DelClicked():
-    global Config,state_queue
+    global Config
     loaded_config = config_file()
     # 更新配置
     A = None # 檢查是否有已儲存的配置
@@ -278,8 +326,7 @@ def DelClicked():
         del loaded_config[A]
     # 將更新後的配置寫回 JSON 文件
     config_file(loaded_config)
-    state_queue.put([2,app.translate("", "Deleted")])
-    mesg_timer.start(MesgPrintTime)
+    ShortMesg.put(app.translate("", "Deleted"))
 
 # 清除layout
 def clear_layout(layout):
@@ -290,37 +337,39 @@ def clear_layout(layout):
             if item.widget():
                 item.widget().deleteLater()
 
-# 設定裝置音量
-def SetVolume():
-    global Vol_settings
-    for i in VolSlider:
-        Vol_settings[i][1] = VolSlider[i].value()/100
-        Vol_settings[i][2] = CheckBoxs[i].isChecked()
-        a_volume.VolumeSettings(Vol_settings)
+# 處理回傳訊息(接收)
+class HandleReturnMessages(QtCore.QThread):
+    Rescan = QtCore.pyqtSignal()
+    def run(self):
+        while True:
+            state,parameter, = a_shared.to_GUI.get()  # 等待狀態更新
+            match state:
+                case 0:  # 持續狀態
+                    status_label.setText(parameter)
+                case 1:  # 開始按鈕
+                    if parameter:
+                        button_mapping.setText(Text['Stop'])
+                    else:
+                        button_mapping.setText(Text['Start'])
+                case 2:  # 短暫通知
+                    ShortMesg.put(parameter)
+                case 3:  # 重新掃描
+                    self.Rescan.emit()
+                case 4:  # 同步音量條
+                    SetGUIMainVol(parameter)
+def start_HandleReturnMessages():
+    global worker
+    worker = HandleReturnMessages()
+    worker.Rescan.connect(ScanClicked)
+    worker.start()
+ShortMesg = queue.Queue()
+def printShortMesg():
+    while True:
+        mesg_label.setText(ShortMesg.get())
+        timer = 2/(ShortMesg.qsize()+2)
+        time.sleep(timer)
+        mesg_label.setText('')
 
-# 更新狀態(接收)
-Mapping_State = False
-def updateChanged(state_queue):
-    global status_label,button_start,Mapping_State
-    while (True):
-        parameter = state_queue.get() # 等待狀態更新
-        match parameter[0]:
-            case 0: # 持續狀態
-                status_label.setText(parameter[1])
-            case 1: # 開始按鈕
-                Mapping_State = parameter[1]
-                if Mapping_State:
-                    button_start.setText(app.translate("", "Stop"))
-                else:
-                    button_start.setText(app.translate("", "Start"))
-            case 2: # 短暫通知
-                mesg_label.setText(parameter[1])
-                '''
-            case 3: # vol
-                Vol_labelA.setText(parameter[1])
-            case 4: # vol
-                Vol_labelB.setText(parameter[1])
-            '''
 # 獲取系統語言
 def get_display_language():
     try:
@@ -337,119 +386,113 @@ def get_display_language():
     except WindowsError:
         return "Error" 
 ##########初始化##########
-app = QtWidgets.QApplication(sys.argv)
-app.setStyle('Fusion')
-# 檢測系統語言
-system_locale = get_display_language()
-print(system_locale)
-# 創建翻譯器
-translator = QtCore.QTranslator()
-if translator.load(f"{system_locale}.qm"):
-    app.installTranslator(translator)
-# 設定深色主題
-dark_palette = QtGui.QPalette()
-dark_palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor(0, 0, 0))
-dark_palette.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor(20, 20, 20))
-app.setPalette(dark_palette)
-# 設定字體
-default_font = QtGui.QFont('Microsoft JhengHei',12)
-app.setFont(default_font)
-# 建立一個垂直佈局管理器
-vbox = QtWidgets.QVBoxLayout()
-vbox.setContentsMargins(5, 5, 5, 5)
-vbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
-# 輸入裝置
-input_label = QtWidgets.QLabel()
-input_label.setStyleSheet('color:rgb(0, 255, 0)')
-vbox.addWidget(input_label)
-# 建立一個CheckBox佈局管理器
-cbox = QtWidgets.QVBoxLayout()
-cbox.setContentsMargins(0, 0, 0, 0)
-cbox_container = QtWidgets.QWidget()
-cbox_container.setLayout(cbox)
-vbox.addWidget(cbox_container)
-# 建立水平佈局管理器1
-hbox = QtWidgets.QHBoxLayout()
-hbox.setContentsMargins(0, 0, 0, 0)
-hbox_container = QtWidgets.QWidget()
-hbox_container.setLayout(hbox)
-vbox.addWidget(hbox_container)
-# 建立水平佈局管理器2
-hbox2 = QtWidgets.QHBoxLayout()
-hbox2.setContentsMargins(0, 0, 0, 0)
-hbox2_container = QtWidgets.QWidget()
-hbox2_container.setLayout(hbox2)
-vbox.addWidget(hbox2_container)
-# 建立儲存按鈕
-button_Save = QtWidgets.QPushButton(app.translate("", "Save"))
-button_Save.clicked.connect(SaveClicked)
-hbox.addWidget(button_Save)
-# 建立刪除按鈕
-button_del = QtWidgets.QPushButton(app.translate("", "Delete"))
-button_del.clicked.connect(DelClicked)
-hbox.addWidget(button_del)
-# 建立輸入裝置切換按鈕
-button_switch = QtWidgets.QPushButton(app.translate("", "Switch"))
-button_switch.clicked.connect(switch_input_device)
-hbox.addWidget(button_switch)
-# 建立scan按鈕
-button_scan = QtWidgets.QPushButton(app.translate("", "Scan"))
-button_scan.clicked.connect(ScanClicked)
-hbox2.addWidget(button_scan)
-# 建立ok按鈕
-button_ok = QtWidgets.QPushButton(app.translate("", "Layout"))
-button_ok.clicked.connect(OkClicked)
-hbox2.addWidget(button_ok)
-# 建立映射按鈕
-button_start = QtWidgets.QPushButton(app.translate("", "Start"))
-button_start.clicked.connect(StarClicked)
-hbox2.addWidget(button_start)
-# 建立一個網格佈局管理器
-Grid = QtWidgets.QGridLayout()
-Grid.setContentsMargins(0, 0, 0, 0)
-Grid.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-Grid_container = QtWidgets.QWidget()
-Grid_container.setLayout(Grid)
-vbox.addWidget(Grid_container)
-# 建立水平佈局管理器3
-hbox3 = QtWidgets.QHBoxLayout()
-hbox3.setContentsMargins(0, 0, 0, 0)
-hbox3_container = QtWidgets.QWidget()
-hbox3_container.setLayout(hbox3)
-vbox.addWidget(hbox3_container)
-# 建立狀態顯示區
-status_label = QtWidgets.QLabel()
-hbox3.addWidget(status_label)
-mesg_label = QtWidgets.QLabel()
-mesg_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-hbox3.addWidget(mesg_label)
-'''
-Vol_labelA = QtWidgets.QLabel()
-vbox.addWidget(Vol_labelA)
-Vol_labelB = QtWidgets.QLabel()
-vbox.addWidget(Vol_labelB)'''
-# 更新狀態線程
-state_queue = queue.Queue()
-t2 = threading.Thread(target=updateChanged,args=(state_queue,))
-t2.daemon = True
-t2.start()
-# 計時器
-mesg_timer= QtCore.QTimer()
-def reset_mesg():
-    mesg_label.setText('')
-mesg_timer.timeout.connect(reset_mesg)
-rescan_timer = QtCore.QTimer()
-def rescan():
-    rescan_timer.stop()
-    ScanClicked() 
-rescan_timer.timeout.connect(rescan)
-# 添加置裝
+def BuildGUI():
+    global app,button_mapping,button_layout,Text
+    global status_label,mesg_label,Grid,vbox,cbox,input_label
+    app = QtWidgets.QApplication(sys.argv)
+    app.setStyle('Fusion')
+    # 檢測系統語言
+    system_locale = get_display_language()
+    print(f"[INFO] locale: {system_locale}",end='\r')
+    # 創建翻譯器
+    translator = QtCore.QTranslator()
+    if translator.load(f"{system_locale}.qm"):
+        app.installTranslator(translator)
+    # 建立翻譯字典
+    Text = {key: app.translate('', key) for key in TextKeys}
+    # 設定深色主題
+    dark_palette = QtGui.QPalette()
+    dark_palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor(0, 0, 0))
+    dark_palette.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor(20, 20, 20))
+    app.setPalette(dark_palette)
+    # 設定字體
+    default_font = QtGui.QFont('Microsoft JhengHei',12)
+    app.setFont(default_font)
+    # 建立一個垂直佈局管理器
+    vbox = QtWidgets.QVBoxLayout()
+    vbox.setContentsMargins(5, 5, 5, 5)
+    vbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+    # 輸入裝置
+    input_label = QtWidgets.QLabel()
+    input_label.setStyleSheet('color:rgb(0, 255, 0)')
+    vbox.addWidget(input_label)
+    # 建立一個CheckBox佈局管理器
+    cbox = QtWidgets.QVBoxLayout()
+    cbox.setContentsMargins(0, 0, 0, 0)
+    cbox_container = QtWidgets.QWidget()
+    cbox_container.setLayout(cbox)
+    vbox.addWidget(cbox_container)
+    # 建立水平佈局管理器1
+    hbox = QtWidgets.QHBoxLayout()
+    hbox.setContentsMargins(0, 0, 0, 0)
+    hbox_container = QtWidgets.QWidget()
+    hbox_container.setLayout(hbox)
+    vbox.addWidget(hbox_container)
+    # 建立水平佈局管理器2
+    hbox2 = QtWidgets.QHBoxLayout()
+    hbox2.setContentsMargins(0, 0, 0, 0)
+    hbox2_container = QtWidgets.QWidget()
+    hbox2_container.setLayout(hbox2)
+    vbox.addWidget(hbox2_container)
+    # 建立儲存按鈕
+    button_Save = QtWidgets.QPushButton(Text['Save'])
+    button_Save.clicked.connect(SaveClicked)
+    hbox.addWidget(button_Save)
+    # 建立刪除按鈕
+    button_del = QtWidgets.QPushButton(Text['Delete'])
+    button_del.clicked.connect(DelClicked)
+    hbox.addWidget(button_del)
+    # 建立輸入裝置切換按鈕
+    button_switch = QtWidgets.QPushButton(Text['Switch'])
+    button_switch.clicked.connect(switch_inputDev)
+    hbox.addWidget(button_switch)
+    # 建立scan按鈕
+    button_scan = QtWidgets.QPushButton(Text['Scan'])
+    button_scan.clicked.connect(ScanClicked)
+    hbox2.addWidget(button_scan)
+    # 建立佈局按鈕
+    button_layout = QtWidgets.QPushButton(Text['Layout'])
+    button_layout.clicked.connect(LayoutClicked)
+    hbox2.addWidget(button_layout)
+    # 建立映射按鈕
+    button_mapping = QtWidgets.QPushButton(Text['Start'])
+    button_mapping.clicked.connect(MappingClicked)
+    hbox2.addWidget(button_mapping)
+    # 建立一個網格佈局管理器
+    Grid = QtWidgets.QGridLayout()
+    Grid.setContentsMargins(0, 0, 0, 0)
+    Grid.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+    Grid_container = QtWidgets.QWidget()
+    Grid_container.setLayout(Grid)
+    vbox.addWidget(Grid_container)
+    # 建立水平佈局管理器3
+    hbox3 = QtWidgets.QHBoxLayout()
+    hbox3.setContentsMargins(0, 0, 0, 0)
+    hbox3_container = QtWidgets.QWidget()
+    hbox3_container.setLayout(hbox3)
+    vbox.addWidget(hbox3_container)
+    # 建立狀態顯示區
+    status_label = QtWidgets.QLabel()
+    hbox3.addWidget(status_label)
+    mesg_label = QtWidgets.QLabel()
+    mesg_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+    hbox3.addWidget(mesg_label)
+#建立GUI
+BuildGUI()
+# 各種線程
+threading.Thread(target=a_volume.VolumeSync,daemon = True).start() #音量同步
+threading.Thread(target=a_server.start_server,daemon = True).start() #server
+threading.Thread(target=a_mapping.StartStream,daemon = True).start() #Mapping
+threading.Thread(target=printShortMesg,daemon = True).start() #ShortMesg
+# 添加置裝(程式入口)
 list_audio_devices()
+start_HandleReturnMessages() #處理回傳訊息
 # 建立視窗
 main_window = QtWidgets.QWidget()
 main_window.setLayout(vbox)
-main_window.setWindowTitle(app.translate("", "Audio Mapping")+' v2.1')
+main_window.setWindowTitle(Text['Audio Mapping'] + ' v3.0')
 main_window.setWindowIcon(QtGui.QIcon('C:/APP/@develop/audio-channel-mapping/icon.ico')) 
 main_window.show()
 center(main_window)
+
 sys.exit(app.exec())
