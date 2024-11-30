@@ -2,6 +2,7 @@
 import struct
 import threading
 from zeroconf import Zeroconf, ServiceInfo
+import zeroconf._utils
 import a_shared
 
 connected_clients = {}
@@ -15,16 +16,6 @@ def get_local_ip():
             return s.getsockname()[0]
         except Exception:
             return "127.0.0.1"  # 回退到回環地址
-
-def recvall(sock, n):
-    # Helper function to receive n bytes or return None if EOF is hit
-    data = b''
-    while len(data) < n:
-        packet = sock.recv(n - len(data))
-        if not packet:
-            return None
-        data += packet
-    return data
 
 #啟動 mDNS 服務廣播
 def start_mdns():
@@ -45,42 +36,45 @@ def start_mdns():
         properties={"description": "Test mDNS Service"},
     )
     zeroconf.register_service(service_info)
-    print(f"\n[INFO] 已廣播服務: {SERVICE_INSTANCE_NAME}",end='\r')
+    print(f"[INFO] 已廣播服務: {SERVICE_INSTANCE_NAME}")
     return zeroconf
 
-def handle_client(client_socket, client_address):
+def handle_client(client_socket, client_IP):
     global clients_lock, connected_clients
     # 處理每個客戶端的連接
-    print(f"\n[INFO] 客戶端已連接 {client_address}",end='\r')
-    a_shared.to_GUI.put([3,client_address])
+    print(f"[INFO] 客戶端已連接 {client_IP}")
     with clients_lock:
-        connected_clients[client_address[0]]=client_socket
+        connected_clients[client_IP] = {'socket':client_socket}
     try:
         while True:
             # 接收4位元組的整數
-            data = recvall(client_socket, 4)
+            data = client_socket.recv(a_shared.AudioHeader.SIZE)
             if not data:
                 break
-            # 將位元組資料解包為整數
-            (number,) = struct.unpack('!i', data)
-            # 接收数据
-            a_shared.to_volume.put([client_address[0],number])
-            #print(f'[○---] {client_socket.getpeername()[0]}: {number}%')
-    except:
-        pass
+            # 將位元組資料解包為
+            header = a_shared.AudioHeader.deserialize(data)
+            connected_clients[client_IP].update({'header':header})
+            if client_IP in a_shared.AllDevS:
+                a_shared.AllDevS[client_IP].update({'volume':header.volume})
+                a_shared.to_GUI.put([4,[client_IP,header.volume]])
+                a_shared.VolChanger = client_IP
+            else:
+                a_shared.to_GUI.put([3,'Resacn'])
+    except Exception as e:
+        print(f'處理回傳值錯誤:{e}')
     finally:
-        print(f"\n[INFO] 客戶端已斷開 {client_address}",end='\r')
-        a_shared.to_GUI.put([3,client_address])
+        print(f"[INFO] 客戶端已斷開 {client_IP}")
+        a_shared.to_GUI.put([3,'Resacn'])
         with clients_lock:
-            connected_clients.pop(client_address[0],None) #移除clients
+            connected_clients.pop(client_IP,None) #移除clients
         client_socket.close()
 
-# 廣播
-def send_message(): #向所有已連接的客戶端發送消息
+# 發送消息
+def send_message(): 
     global clients_lock, connected_clients
     while True:
         IP,isVol,data = a_shared.to_server.get()
-        client_socket = connected_clients.get(IP)
+        client_socket = connected_clients.get(IP)['socket']
         if client_socket:
             with clients_lock:
                 if isVol:
@@ -88,11 +82,12 @@ def send_message(): #向所有已連接的客戶端發送消息
                 else: # 計算總數據大小（header + data）,打包總大小為 4 字節
                     size_prefix = struct.pack('!I',(a_shared.HEADER_SIZE + len(data)) )
                     outdata = (size_prefix + a_shared.header_bytes + data)
+                #發送
                 try:
                     client_socket.sendall(outdata) #TCP
                     #udp_socket.sendto(outdata, client_socket.getpeername()) #UDP
                 except Exception as e:
-                    print(f'Send Data Error:/n{e}')
+                    print(f'Send Data Error:{e}')
 
 def start_server():
     global clients_lock,udp_socket
@@ -105,7 +100,7 @@ def start_server():
     # 初始化 UDP 
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind((HOST_IP, PORT))
-    print(f"\n[INFO] 已啟動主機，正在監聽 {HOST_IP}:{PORT}")
+    print(f"[INFO] 已啟動主機，正在監聽 {HOST_IP}:{PORT}")
     clients_lock = threading.Lock()
     # 接收資料queue
     threading.Thread(target=send_message, daemon=True).start()
@@ -115,7 +110,7 @@ def start_server():
             client_socket, client_address = server_socket.accept() 
             threading.Thread( # 為每個連線啟動一個線程
                 target=handle_client,
-                args=(client_socket, client_address),
+                args=(client_socket, client_address[0]),
                 daemon=True
             ).start()
     finally:
@@ -123,4 +118,4 @@ def start_server():
         udp_socket.close()
         zeroconf.unregister_all_services()
         zeroconf.close()
-        print("\n[INFO] 伺服器已終止",end='\r')
+        print("[INFO] 伺服器已終止")
