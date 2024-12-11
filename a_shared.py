@@ -7,6 +7,7 @@ to_server = queue.Queue()
 to_volume = queue.Queue()
 to_mapping = queue.Queue()
 ###########Arg#############
+clients = {}
 Config = {}
 AllDevS = {}
 inputDevName = ''
@@ -15,7 +16,6 @@ VolChanger = ''
 input_class_loopback = True
 SliderOn = True
 callbackOn = True
-initVol = False
 ###########Class############
 @dataclass
 class AudioHeader:

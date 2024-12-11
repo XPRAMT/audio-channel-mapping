@@ -3,3 +3,7 @@
 /build
 /dist
 /__pycache__
+/build
+config.json
+.vscode/settings.json
+/build/GUI

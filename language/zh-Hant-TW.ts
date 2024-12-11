@@ -70,6 +70,11 @@
       <source>Scan</source>
       <translation>掃描</translation>
     </message>
+	<message>
+      <location filename="GUI.py" line="473" />
+      <source>Refresh</source>
+      <translation>刷新</translation>
+    </message>
     <message>
       <location filename="GUI.py" line="384" />
       <source>Layout</source>

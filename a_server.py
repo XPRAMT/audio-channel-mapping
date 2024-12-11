@@ -2,10 +2,7 @@
 import struct
 import threading
 from zeroconf import Zeroconf, ServiceInfo
-import zeroconf._utils
 import a_shared
-
-connected_clients = {}
 
 # 獲取本機的區域網 IP
 def get_local_ip():
@@ -40,11 +37,11 @@ def start_mdns():
     return zeroconf
 
 def handle_client(client_socket, client_IP):
-    global clients_lock, connected_clients
+    global clients_lock
     # 處理每個客戶端的連接
     print(f"[INFO] 客戶端已連接 {client_IP}")
     with clients_lock:
-        connected_clients[client_IP] = {'socket':client_socket}
+        a_shared.clients[client_IP] = {'socket':client_socket}
     try:
         while True:
             # 接收4位元組的整數
@@ -53,8 +50,9 @@ def handle_client(client_socket, client_IP):
                 break
             # 將位元組資料解包為
             header = a_shared.AudioHeader.deserialize(data)
-            connected_clients[client_IP].update({'header':header})
+            a_shared.clients[client_IP].update({'header':header})
             if client_IP in a_shared.AllDevS:
+                #print(f'Receive vol from {client_IP} {header.volume}')
                 a_shared.AllDevS[client_IP].update({'volume':header.volume})
                 a_shared.to_GUI.put([4,[client_IP,header.volume]])
                 a_shared.VolChanger = client_IP
@@ -66,16 +64,16 @@ def handle_client(client_socket, client_IP):
         print(f"[INFO] 客戶端已斷開 {client_IP}")
         a_shared.to_GUI.put([3,'Resacn'])
         with clients_lock:
-            connected_clients.pop(client_IP,None) #移除clients
+            a_shared.clients.pop(client_IP,None) #移除clients
         client_socket.close()
 
 # 發送消息
 def send_message(): 
-    global clients_lock, connected_clients
+    global clients_lock
     while True:
         IP,isVol,data = a_shared.to_server.get()
-        client_socket = connected_clients.get(IP)['socket']
-        if client_socket:
+        client = a_shared.clients.get(IP)
+        if client:
             with clients_lock:
                 if isVol:
                     outdata = data
@@ -84,8 +82,8 @@ def send_message():
                     outdata = (size_prefix + a_shared.header_bytes + data)
                 #發送
                 try:
-                    client_socket.sendall(outdata) #TCP
-                    #udp_socket.sendto(outdata, client_socket.getpeername()) #UDP
+                    client['socket'].sendall(outdata) #TCP
+                    #udp_socket.sendto(outdata, client['socket'].getsockname()) #UDP
                 except Exception as e:
                     print(f'Send Data Error:{e}')
 

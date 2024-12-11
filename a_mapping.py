@@ -6,84 +6,76 @@ import time
 #######################
 isRunning = False
 Start = False
-outputSets=[]
-outputDevs=None
-inputDev=None
+outputDevs=None # 輸出固定參數
+inputDev=None   # 輸入固定參數
 np_type = np.float32
 pya_type = pyaudio.paFloat32
 #######################
-def Receive(outputSetsIn):
-    global outputSets
-    if len(outputSetsIn)==len(outputSets) or isRunning == False:
-        outputSets = outputSetsIn
-        #print(f"[INFO] {outputSets}")
-
 def StartStream():
-    global isRunning,Start,inputDev,outputDevs,outputSets,CHUNK
+    global isRunning,Start,inputDev,outputDevs,CHUNK
     #輸出處理(重採樣,分配聲道)
-    def OutputProcesse(indata,CHUNKFix,output_set,CH_num):
+    def OutputProcesse(devName,indata,CHUNKFix,CH_num):
         outdata = np.zeros((CHUNKFix,CH_num),dtype=np_type)
-        for j,channel in enumerate(output_set): 
-            if channel and indata.size > 0: # [[inputCH,vol][inputCH,vol]]
-                ch = channel[0] - 1 
-                vol = channel[1]
+        channelSet = a_shared.Config[devName]['channels']
+        for outCh,inCh_Vol in enumerate(channelSet): 
+            if indata.size > 0:
+                inCh = int(inCh_Vol)
+                vol = (inCh_Vol % 1)*10
+                vol = 1 if vol > 0.99 else vol
                 if CHUNK/CHUNKFix == 1:     #原始
-                    try:
-                        outdata[:,j] = indata[:,ch]*vol
-                    except Exception as e:
-                        print(e)
+                    outdata[:,outCh] = indata[:,inCh]*vol
                 elif CHUNK/CHUNKFix == 2:   #1/2倍採樣
-                    outdata[:,j] = indata[::2,ch]*vol
+                    outdata[:,outCh] = indata[::2,inCh]*vol
                 elif CHUNK/CHUNKFix == 1/2: #2倍採樣
-                    outdata[:,j] = np.repeat(indata[:,ch],2)*vol
+                    outdata[:,outCh] = np.repeat(indata[:,inCh],2)*vol
                 else:                       # 其他
                     indices = np.linspace(0, CHUNK, CHUNKFix+1)
-                    outdata[:,j] = np.interp(indices[:-1], np.arange(CHUNK),indata[:,ch])*vol
+                    outdata[:,outCh] = np.interp(indices[:-1], np.arange(CHUNK),indata[:,inCh])*vol
         return outdata
     # 輸入處理
     def callback_input(inCh):
         def callback_A(in_data, frame_count, time_info, status):
             indata = np.frombuffer(in_data, dtype=np_type).reshape(-1, inCh)
-            for i,devName in enumerate(outputDevs):
+            for devName in outputDevs:
                 if outputDevs[devName]['switch']:
                     IP = outputDevs[devName]['IP']
                     Queue = outputDevs[devName]['queue']
                     Qsize = Queue.qsize()
-                    delay = a_shared.AllDevS[devName]['delay']/Frametime
-                    if IP: # 網路裝置
+                    delay = a_shared.Config[devName]['delay']/Frametime
+                    if IP: # 網路輸出裝置
                         CH_num = outputDevs[devName]['maxOutputChannels']
                         if Qsize > delay+1:
                             Queue.get()
                             outdata = Queue.get()
-                            outdata_bytes = OutputProcesse(outdata,CHUNK,outputSets[i],CH_num).tobytes()
+                            outdata_bytes = OutputProcesse(devName,outdata,CHUNK,CH_num).tobytes()
                             a_shared.to_server.put([IP,False,outdata_bytes])
                         elif Qsize < delay:
                             Queue.put(indata)
                         else:
                             Queue.put(indata)
                             outdata = Queue.get()
-                            outdata_bytes = OutputProcesse(outdata,CHUNK,outputSets[i],CH_num).tobytes()
+                            outdata_bytes = OutputProcesse(devName,outdata,CHUNK,CH_num).tobytes()
                             a_shared.to_server.put([IP,False,outdata_bytes])
-                    else: # 本機裝置
+                    else: # 本機輸出裝置
                         Queue.put(indata)
                         
             return (in_data, pyaudio.paContinue)
         return callback_A
     # 本機輸出裝置
-    def callback_output(i,_,Queue,CH_num,CHUNKFix):
+    def callback_output(outdevName,Queue,CH_num,CHUNKFix):
         def callback_B(in_data, frame_count, time_info, status):
             Qsize = Queue.qsize()
-            delay = a_shared.AllDevS[devName]['delay']/Frametime
+            delay = a_shared.Config[outdevName]['delay']/Frametime
             if Qsize == 0:
-                a_shared.AllDevS[devName]['wait']=True
+                a_shared.AllDevS[outdevName]['wait']=True
 
-            if a_shared.AllDevS[devName]['wait']:
+            if a_shared.AllDevS[outdevName]['wait']:
                 outdata = np.zeros((CHUNKFix,CH_num),dtype=np_type)
                 if Qsize > delay:
-                    a_shared.AllDevS[devName]['wait']=False
+                    a_shared.AllDevS[outdevName]['wait']=False
             else:
                 indata = Queue.get()
-                outdata = OutputProcesse(indata,CHUNKFix,outputSets[i],CH_num)
+                outdata = OutputProcesse(outdevName,indata,CHUNKFix,CH_num)
                 if Qsize > delay + 6:
                     Queue.get()
 
@@ -114,31 +106,30 @@ def StartStream():
             Framerate = 300 #300可以整除96/48/44.1KHz,每幀延遲10/3ms
             Frametime = 1000/Framerate #ms
             CHUNK = round(InputRate/Framerate)
-            for i,devName in enumerate(outputDevs):
-                if outputDevs[devName]['switch']:
-                    writeQueue = queue.Queue()
-                    chNum = outputDevs[devName]['maxOutputChannels']
-                    OutputRate = int(outputDevs[devName]['defaultSampleRate'])
-                    RateScale = OutputRate/InputRate
-                    CHUNKFix = round(CHUNK*RateScale)
-                    if RateScale not in {1,2}:
-                        Resample = True
-                    if not outputDevs[devName]['IP']: #本機裝置
-                        try:
-                            po = pyaudio.PyAudio()
-                            stream = po.open(
-                                format=pya_type,
-                                channels=chNum,
-                                rate=OutputRate,
-                                output=True,
-                                output_device_index=outputDevs[devName]['index'],
-                                frames_per_buffer=CHUNKFix,
-                                stream_callback=callback_output(i,devName,writeQueue,chNum,CHUNKFix))
-                            pyaudios.append(po)
-                            stream_output.append(stream)
-                        except Exception as error:
-                            print(f'start {devName} error:{error}')
-                    outputDevs[devName]['queue']=writeQueue
+            for devName in a_shared.Config['devList']:
+                writeQueue = queue.Queue()
+                chNum = outputDevs[devName]['maxOutputChannels']
+                OutputRate = int(outputDevs[devName]['defaultSampleRate'])
+                RateScale = OutputRate/InputRate
+                CHUNKFix = round(CHUNK*RateScale)
+                if RateScale not in {1,2}:
+                    Resample = True
+                if not outputDevs[devName]['IP']: #本機裝置
+                    try:
+                        po = pyaudio.PyAudio()
+                        stream = po.open(
+                            format=pya_type,
+                            channels=chNum,
+                            rate=OutputRate,
+                            output=True,
+                            output_device_index=outputDevs[devName]['index'],
+                            frames_per_buffer=CHUNKFix,
+                            stream_callback=callback_output(devName,writeQueue,chNum,CHUNKFix))
+                        pyaudios.append(po)
+                        stream_output.append(stream)
+                    except Exception as error:
+                        print(f'start {devName} error:{error}')
+                outputDevs[devName]['queue']=writeQueue
             # 初始化輸入流
             pi = pyaudio.PyAudio()
             try:

@@ -15,7 +15,7 @@ class AudioEndpointVolumeCallback(COMObject):
         MainOnNotify(self.devName)
 
 def MainOnNotify(devName):
-    if a_shared.callbackOn or a_shared.initVol:
+    if a_shared.callbackOn:
         vol = getDevVol(devName)
         a_shared.AllDevS[devName]['volume'] = vol
         a_shared.to_GUI.put([4,[devName,vol]])
@@ -33,16 +33,15 @@ def setDevVol(devName,vol):
     def PrintVol(vol,name,Xput='[○---]'):
         print(f'{Xput} {name} {round(vol*100)}%')
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-    a_shared.callbackOn = False
     if devName in a_shared.AllDevS:
         a_shared.AllDevS[devName]['volume'] = vol
-        a_shared.to_GUI.put([4,[devName,vol]])
         IP = a_shared.AllDevS[devName]['IP']
         if IP:
             # 發送音量到Client
-            a_shared.Header.volume = vol
-            a_shared.to_server.put([IP,True,a_shared.header_prefix + a_shared.Header.serialize()])
+            a_shared.clients[devName]['header'].volume = vol
+            a_shared.to_server.put([IP,True,a_shared.header_prefix + a_shared.clients[devName]['header'].serialize()])
         else:
+            a_shared.callbackOn = False
             # 設定本機裝置
             try:
                 VolCtrlItf[devName].SetMasterVolumeLevelScalar(vol, None)
@@ -87,7 +86,7 @@ def syncVol():
                 # ＃ ＃ # # ＃ ＃ # # ＃ ＃ # # ＃ ＃ # # ＃ ＃
                 # # 計算scale
                 scale = tmpAllDevS[devName]['volume']/(PreVol+0.00000000001)
-                if 0.85 < scale < 1.15: #吸附
+                if 0.9 < scale < 1.1: #吸附
                     scale = 1
                 if not coName in tmpScales:
                     editTmpScale(scale)
@@ -95,6 +94,8 @@ def syncVol():
                 tmpScale = editTmpScale()
                 newVol = min(CurVol*tmpScale, 1)
                 setDevVol(devName,newVol)
+                a_shared.to_GUI.put([4,[devName,newVol]])
+                #print(f'change slider {devName} {newVol} by {VolChanger}' )
 
             # 關閉,移除設定
             if not (a_shared.AllDevS[devName]['switch'] and a_shared.AllDevS[VolChanger]['switch']):
