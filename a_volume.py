@@ -1,10 +1,65 @@
 from comtypes import COMObject,CoCreateInstance,CLSCTX_ALL,CLSCTX_INPROC_SERVER
 from pycaw import pycaw
 from pycaw.constants import CLSID_MMDeviceEnumerator
+from pycaw.api.audioclient import IAudioClient
+from ctypes import POINTER, cast, Structure
+from ctypes.wintypes import WORD, DWORD
 import time
 import copy
 import a_shared
- 
+
+# 定義常量
+WAVE_FORMAT_EXTENSIBLE = 0xFFFE  # WAVE_FORMAT_EXTENSIBLE 格式標籤
+# 定義 WAVEFORMATEX 結構
+class WAVEFORMATEX(Structure):
+    _fields_ = [
+        ("wFormatTag", WORD),
+        ("nChannels", WORD),
+        ("nSamplesPerSec", DWORD),
+        ("nAvgBytesPerSec", DWORD),
+        ("nBlockAlign", WORD),
+        ("wBitsPerSample", WORD),
+        ("cbSize", WORD),
+    ]
+
+# 定義 WAVEFORMATEXTENSIBLE 結構
+class WAVEFORMATEXTENSIBLE(Structure):
+    _fields_ = [
+        ("Format", WAVEFORMATEX),
+        ("dwChannelMask", DWORD)  # 聲道掩碼
+    ]
+
+def parse_channel_mask(channel_mask):
+    # 聲道對應的標誌和名稱
+    channel_mapping = {
+        0x1: "FL",   # Front Left
+        0x2: "FR",   # Front Right
+        0x4: "CNT",  # Center
+        0x8: "SW",   # Subwoofer / Low Frequency Effects
+        0x10: "BL",  # Back Left
+        0x20: "BR",  # Back Right
+        0x40: "FLC", # Front Left of Center
+        0x80: "FRC", # Front Right of Center
+        0x100: "BC", # Back Center
+        0x200: "SL", # Side Left
+        0x400: "SR", # Side Right
+        0x800: "TC", # Top Center
+        0x1000: "TFL", # Top Front Left
+        0x2000: "TFC", # Top Front Center
+        0x4000: "TFR", # Top Front Right
+        0x8000: "TBL", # Top Back Left
+        0x10000: "TBC", # Top Back Center
+        0x20000: "TBR", # Top Back Right
+    }
+
+    # 解析輸入的 channel_mask
+    channelsList = []
+    for bitmask, name in channel_mapping.items():
+        if channel_mask & bitmask:  # 如果該位存在
+            channelsList.append(name)
+
+    return channelsList
+
 # 音量事件回調
 class AudioEndpointVolumeCallback(COMObject):
     _com_interfaces_ = [pycaw.IAudioEndpointVolumeCallback]
@@ -22,12 +77,8 @@ def MainOnNotify(devName):
         a_shared.VolChanger = devName
     a_shared.callbackOn = True
 
-def initVol():
-    for devName in VolCtrlItf:
-        MainOnNotify(devName)
-    
 def getDevVol(devName):
-        return VolCtrlItf[devName].GetMasterVolumeLevelScalar()
+        return DevS[devName]['volPoint'].GetMasterVolumeLevelScalar()
 
 def setDevVol(devName,vol):
     def PrintVol(vol,name,Xput='[○---]'):
@@ -38,17 +89,18 @@ def setDevVol(devName,vol):
         IP = a_shared.AllDevS[devName]['IP']
         if IP:
             # 發送音量到Client
-            a_shared.clients[devName]['header'].volume = vol
-            a_shared.to_server.put([IP,True,a_shared.header_prefix + a_shared.clients[devName]['header'].serialize()])
+            a_shared.clients[IP]['volume'] = vol
+            a_shared.Header.volume = vol
+            a_shared.to_server.put([IP,True,a_shared.header_prefix + a_shared.Header.serialize()])
         else:
             a_shared.callbackOn = False
             # 設定本機裝置
             try:
-                VolCtrlItf[devName].SetMasterVolumeLevelScalar(vol, None)
+                DevS[devName]['volPoint'].SetMasterVolumeLevelScalar(vol, None)
                 if vol == 0:
-                    VolCtrlItf[devName].SetMute(1,None)
+                    DevS[devName]['volPoint'].SetMute(1,None)
                 else:
-                    VolCtrlItf[devName].SetMute(0,None)
+                    DevS[devName]['volPoint'].SetMute(0,None)
             except:
                 return
     #PrintVol(vol,devName,'[---○]')
@@ -106,30 +158,41 @@ def syncVol():
             if devName == VolChanger:
                 nameFlag=False
                 
-def volSync():
-    global Stop,tmpAllDevS,VolCtrlItf,callbacks
+def volSyncMain():
+    global Stop,tmpAllDevS,initiDev,DevS
+    initiDev = True
     while True:
-        # 為每個裝置綁定音量介面
-        VolCtrlItf={}
+        DevS = {}
         DevEnumerator = CoCreateInstance(CLSID_MMDeviceEnumerator,pycaw.IMMDeviceEnumerator,CLSCTX_INPROC_SERVER)
         for device in pycaw.AudioUtilities.GetAllDevices():
-            if device.FriendlyName in a_shared.AllDevS:
-                devName = device.FriendlyName
-                if not (a_shared.AllDevS[devName]['IP'] or devName in VolCtrlItf):
-                    Device = DevEnumerator.GetDevice(device.id)
-                    try:
-                        interface = Device.Activate(pycaw.IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-                        VolCtrlItf[devName]=interface.QueryInterface(pycaw.IAudioEndpointVolume)
-                        #print(f'[INFO] Add {devName}')
-                    except Exception as e:
-                        #print(f'[ERROR] initi {device.FriendlyName}: {e}')
-                        pass
-        # 為每個裝置綁定回調
-        callbacks = {}
-        for devName in VolCtrlItf:
-            callbacks[devName] = AudioEndpointVolumeCallback(devName)
-            VolCtrlItf[devName].RegisterControlChangeNotify(callbacks[devName])
-        initVol()
+            state = device.state
+            devName = device.FriendlyName
+            if state == pycaw.AudioDeviceState.Active and (devName not in DevS):
+                DevS[devName] = {}
+                #io = pycaw.AudioUtilities.GetEndpointDataFlow(device.id,1) # 0:output,1:input
+                Device = DevEnumerator.GetDevice(device.id)
+                try:
+                    # 添加音量介面
+                    EndpointVol = Device.Activate(pycaw.IAudioEndpointVolume._iid_, CLSCTX_ALL, None).QueryInterface(pycaw.IAudioEndpointVolume)
+                    DevS[devName]['volPoint'] = EndpointVol
+                    # 添加callback
+                    callback = AudioEndpointVolumeCallback(devName)
+                    EndpointVol.RegisterControlChangeNotify(callback)
+                    # 讀取音量
+                    DevS[devName]['volume'] = EndpointVol.GetMasterVolumeLevelScalar()
+                    # 解析聲道資訊
+                    Client = Device.Activate(IAudioClient._iid_, CLSCTX_ALL, None).QueryInterface(IAudioClient)
+                    wave_format = Client.GetMixFormat()
+                    # 轉型為 WAVEFORMATEXTENSIBLE
+                    wave_extensible = cast(wave_format, POINTER(WAVEFORMATEXTENSIBLE))
+                    channel_mask = wave_extensible.contents.dwChannelMask
+                    DevS[devName]['chList'] = parse_channel_mask(channel_mask)
+                    #print('chs: ',a_shared.AllDevS[devName]['chList'])
+                except Exception as e:
+                    print(f'[ERRO] initi {device.FriendlyName}: {e}')
+                    pass
+                    
+        initiDev = False
         # 開始偵測音量變化
         tmpAllDevS = copy.deepcopy(a_shared.AllDevS)
         a_shared.VolChanger = ''
