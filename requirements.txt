@@ -3,4 +3,6 @@ numpy
 pycaw
 PyQt6
 PyAudioWPatch
+requests
+keyboard
 pyinstaller

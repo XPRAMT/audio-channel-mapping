@@ -89,8 +89,7 @@ def setDevVol(devName,vol):
         IP = a_shared.AllDevS[devName]['IP']
         if IP:
             # 發送音量到Client
-            a_shared.clients[IP]['volume'] = vol
-            a_shared.Header.volume = vol
+            a_shared.clients[IP]['volume'] = a_shared.Header.volume = vol
             a_shared.to_server.put([IP,True,a_shared.header_prefix + a_shared.Header.serialize()])
         else:
             a_shared.callbackOn = False
@@ -167,30 +166,31 @@ def volSyncMain():
         for device in pycaw.AudioUtilities.GetAllDevices():
             state = device.state
             devName = device.FriendlyName
+            if pycaw.AudioUtilities.GetEndpointDataFlow(device.id,1): # 0:output,1:input
+                    devName = devName + '🎙️'
             if state == pycaw.AudioDeviceState.Active and (devName not in DevS):
                 DevS[devName] = {}
-                #io = pycaw.AudioUtilities.GetEndpointDataFlow(device.id,1) # 0:output,1:input
                 Device = DevEnumerator.GetDevice(device.id)
-                try:
-                    # 添加音量介面
-                    EndpointVol = Device.Activate(pycaw.IAudioEndpointVolume._iid_, CLSCTX_ALL, None).QueryInterface(pycaw.IAudioEndpointVolume)
-                    DevS[devName]['volPoint'] = EndpointVol
-                    # 添加callback
-                    callback = AudioEndpointVolumeCallback(devName)
-                    EndpointVol.RegisterControlChangeNotify(callback)
-                    # 讀取音量
-                    DevS[devName]['volume'] = EndpointVol.GetMasterVolumeLevelScalar()
-                    # 解析聲道資訊
-                    Client = Device.Activate(IAudioClient._iid_, CLSCTX_ALL, None).QueryInterface(IAudioClient)
-                    wave_format = Client.GetMixFormat()
-                    # 轉型為 WAVEFORMATEXTENSIBLE
-                    wave_extensible = cast(wave_format, POINTER(WAVEFORMATEXTENSIBLE))
-                    channel_mask = wave_extensible.contents.dwChannelMask
-                    DevS[devName]['chList'] = parse_channel_mask(channel_mask)
+                #try:
+                # 添加音量介面
+                EndpointVol = Device.Activate(pycaw.IAudioEndpointVolume._iid_, CLSCTX_ALL, None).QueryInterface(pycaw.IAudioEndpointVolume)
+                DevS[devName]['volPoint'] = EndpointVol
+                # 添加callback
+                callback = AudioEndpointVolumeCallback(devName)
+                EndpointVol.RegisterControlChangeNotify(callback)
+                # 讀取音量
+                DevS[devName]['volume'] = EndpointVol.GetMasterVolumeLevelScalar()
+                # 解析聲道資訊
+                Client = Device.Activate(IAudioClient._iid_, CLSCTX_ALL, None).QueryInterface(IAudioClient)
+                wave_format = Client.GetMixFormat()
+                # 轉型為 WAVEFORMATEXTENSIBLE
+                wave_extensible = cast(wave_format, POINTER(WAVEFORMATEXTENSIBLE))
+                channel_mask = wave_extensible.contents.dwChannelMask
+                DevS[devName]['chList'] = parse_channel_mask(channel_mask)
                     #print('chs: ',a_shared.AllDevS[devName]['chList'])
-                except Exception as e:
-                    print(f'[ERRO] initi {device.FriendlyName}: {e}')
-                    pass
+                #except Exception as e:
+                #    print(f'[ERRO] initi {device.FriendlyName}: {e}')
+                #    pass
                     
         initiDev = False
         # 開始偵測音量變化

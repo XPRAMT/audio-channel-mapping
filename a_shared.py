@@ -10,10 +10,9 @@ to_mapping = queue.Queue()
 clients = {}
 Config = {}
 AllDevS = {}
-inputDevName = ''
 VolChanger = ''
 ###########Flag############
-input_class_loopback = True
+isloopback = True
 SliderOn = True
 callbackOn = True
 ###########Class############

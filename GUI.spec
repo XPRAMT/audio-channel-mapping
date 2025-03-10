@@ -5,7 +5,7 @@ a = Analysis(
     ['GUI.pyw'],
     pathex=[],
     binaries=[],
-    datas=[('venv\Lib\site-packages\zeroconf', 'zeroconf')],
+    datas=[('..\.venv\Lib\site-packages\zeroconf', 'zeroconf')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -36,4 +36,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['icon.ico'],
+    version='version.txt',
 )

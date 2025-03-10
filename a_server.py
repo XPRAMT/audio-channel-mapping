@@ -66,6 +66,8 @@ def handle_client(client_socket, client_IP):
             recvDict = json.loads(data)
             if 'mediaKey' in recvDict:
                 a_shared.to_GUI.put([6,recvDict['mediaKey']])
+            elif 'startStop' in recvDict:
+                a_shared.to_GUI.put([7,client_MAC])
             else:
                 a_shared.clients[client_IP].update(recvDict)
                 if client_MAC in a_shared.AllDevS:

@@ -144,7 +144,7 @@ def StartStream():
                     frames_per_buffer=CHUNK,
                     stream_callback=callback_input(InputChannel))
             except Exception as error:
-                        print(f'start {a_shared.inputDevName} error:{error}')
+                        print(f'start error:{error}')
             a_shared.Header.sample_rate = InputRate
             a_shared.Header.channels = InputChannel
             a_shared.Header.block_size = CHUNK

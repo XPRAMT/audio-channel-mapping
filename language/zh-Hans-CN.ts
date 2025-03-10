@@ -4,79 +4,72 @@
   <context>
     <name />
     <message>
-      <location filename="GUI.py" line="40" />
+      <location filename="GUI.py" line="51" />
       <source>Scan successful</source>
       <translation>扫描成功</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="158" />
+      <location filename="GUI.py" line="313" />
       <source>Config created</source>
       <translation>已建立配置</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="182" />
-      <source>Applied config</source>
-      <translation>已应用配置</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="264" />
-      <location filename="GUI.py" line="223" />
-      <source>Please layout first</source>
-      <translation>请先布局</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="226" />
-      <source>Device change, rescan</source>
-      <translation>设备变化，重新扫描</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="261" />
+      <location filename="GUI.py" line="328" />
       <source>Saved</source>
       <translation>已保存</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="280" />
+      <location filename="GUI.py" line="339" />
       <source>Deleted</source>
       <translation>已删除</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="312" />
-      <source>Stop</source>
-      <translation>停止</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="388" />
-      <location filename="GUI.py" line="314" />
+      <location filename="GUI.py" line="496" />
       <source>Start</source>
       <translation>启动</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="368" />
-      <source>Save</source>
-      <translation>保存</translation>
+      <location filename="GUI.py" line="497" />
+      <source>Stop</source>
+      <translation>停止</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="372" />
-      <source>Delete</source>
-      <translation>删除</translation>
+      <location filename="GUI.py" line="603" />
+      <source>Use short name</source>
+      <translation>使用简短名称</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="376" />
-      <source>Switch</source>
-      <translation>切换</translation>
+      <location filename="GUI.py" line="614" />
+      <source>Use media key</source>
+      <translation>使用媒体控制键</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="380" />
-      <source>Scan</source>
-      <translation>扫描</translation>
+      <location filename="GUI.py" line="627" />
+      <source>Start at Login</source>
+      <translation>开机时自启动</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="384" />
-      <source>Layout</source>
-      <translation>布局</translation>
+      <location filename="GUI.py" line="652" />
+      <source>Minimize at start</source>
+      <translation>启动时缩小到系统托盘</translation>
     </message>
-	<message>
-      <location filename="GUI.py" line="435" />
+    <message>
+      <location filename="GUI.py" line="662" />
+      <source>Minimize to system tray on close</source>
+      <translation>关闭时缩小到系统托盘</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="671" />
+      <source>Check for Updates</source>
+      <translation>检查更新</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="675" />
+      <source>Back</source>
+      <translation>返回</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="714" />
       <source>Audio Mapping</source>
       <translation>声道映射</translation>
     </message>
