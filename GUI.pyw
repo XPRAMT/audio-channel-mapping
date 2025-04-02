@@ -1,5 +1,6 @@
 from PyQt6 import QtWidgets,QtCore,QtGui
-import qfluentwidgets
+from qasync import QEventLoop
+#import qfluentwidgets
 from functools import partial
 import pyaudiowpatch as pyaudio
 import time,json,queue,threading,sys,os,ctypes
@@ -8,13 +9,14 @@ import a_shared
 import a_mapping
 import a_volume
 import a_server
+import a_openrgb
+import a_smtc
 import copy
 import winreg
 import requests
-import keyboard
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
 ##########參數##########
-curVersion = "3.2"
+curVersion = "4.0"
 appName = "AudioMapping"
 coName = ''
 CheckBoxs = {}
@@ -42,7 +44,7 @@ def ScanClicked(tmpMapRunning=False):
             ShortMesg.put(app.translate("", "Scan successful"))
             LayoutClicked()
             Auto_Apply()
-            if tmpMapRunning and len(list_Row)>1:
+            if tmpMapRunning and len(list_Row)>0: # 以裝置數量判斷是否啟動
                 a_mapping.outputDevs = copy.deepcopy(outputDevs)
                 a_mapping.inputDev = inputDev
                 a_mapping.Start = True
@@ -201,6 +203,8 @@ def LayoutClicked():
                 slider.setRange(0,100)
                 slider.setValue(0)
                 slider.valueChanged.connect(partial(GetChSlider, devName, inch-1, c))
+                slider.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                                      QtWidgets.QSizePolicy.Policy.Expanding)
                 Grid.addWidget(slider, inch, outch)
                 # 初始化ChSlider[devName]
                 ChSlider.setdefault(devName,[])
@@ -374,7 +378,7 @@ class HandleReturnMessages(QtCore.QThread):
                     if CheckBoxs[devName]:
                         CheckBoxs[devName].setText(f'{a_shared.AllDevS[devName]["name"]} | {txt}')
                 case 6: # 媒體鍵
-                    media_key(parameter)
+                    SMTC.control(parameter)
                 case 7: # 播放/暫停
                     a_shared.Config['devList'].append(parameter)
                     self.StartStop.emit()
@@ -437,9 +441,6 @@ def check_for_updates(failMesg = True):
                 "Error", 
                 f"An error occurred while checking for updates:\n{e}"
             )
-# 媒體按鍵
-def media_key(key_value):
-    keyboard.send(key_value)
 
 def get_theme():
     "預設值為 1 (淺色模式)，若返回 0 則表示深色模式"
@@ -521,18 +522,26 @@ def translate():
 translate()
 # MainUI
 def BuildMainPage():
-    global button_mapping,button_scan,button_switch,media_keys
-    global status_label,mesg_label,Grid,vbox,cbox
+    global button_mapping,button_scan,button_switch
+    global status_label,mesg_label,Grid,vbox,cbox,SMTC
 
+    # 建立一個網格管理器
+    Grid_Main = QtWidgets.QGridLayout()
+    Grid_Main.setContentsMargins(5, 5, 5, 5)
     # 建立一個垂直佈局管理器
     vbox = QtWidgets.QVBoxLayout()
-    vbox.setContentsMargins(5, 5, 5, 5)
+    vbox.setContentsMargins(0, 0, 0, 0)
     vbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+    Grid_Main.addLayout(vbox,0,0)
+    # 建立SMTC控制器
+    SMTC = a_smtc.MediaControlWidget()
+    Grid_Main.addWidget(SMTC,0,1)
+    SMTC.setVisible(loaded_config.get('mediaKey',False))
     # 建立一個CheckBox佈局管理器
     cbox = QtWidgets.QVBoxLayout()
     cbox.setContentsMargins(0, 0, 0, 0)
     vbox.addLayout(cbox)
-     # 建立一個網格佈局管理器
+    # 建立一個網格佈局管理器
     Grid_btn = QtWidgets.QGridLayout()
     Grid_btn.setContentsMargins(0, 0, 0, 0)
     #Grid_btn.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -561,21 +570,6 @@ def BuildMainPage():
     button_mapping = QtWidgets.QPushButton('▶️')#app.translate('', "Start"))
     button_mapping.clicked.connect(MappingClicked)
     Grid_btn.addWidget(button_mapping,1,2)
-    # 建立媒體控制按鈕
-    button_Previous = QtWidgets.QPushButton("⏮")
-    button_Previous.clicked.connect(lambda: media_key("previous track"))
-    Grid_btn.addWidget(button_Previous,2,0)
-
-    button_PlayPause = QtWidgets.QPushButton("⏸️")
-    button_PlayPause.clicked.connect(lambda: media_key("play/pause"))
-    Grid_btn.addWidget(button_PlayPause,2,1)
-
-    button_Next = QtWidgets.QPushButton("⏭")
-    button_Next.clicked.connect(lambda: media_key("next track"))
-    Grid_btn.addWidget(button_Next,2,2)
-    media_keys=[button_Previous,button_PlayPause,button_Next]
-    for btn in media_keys:
-        btn.setVisible(loaded_config.get('mediaKey',False))
     # 建立一個網格佈局管理器
     Grid = QtWidgets.QGridLayout()
     Grid.setContentsMargins(0, 0, 0, 0)
@@ -592,7 +586,7 @@ def BuildMainPage():
     mesg_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
     hbox3.addWidget(mesg_label)
 
-    main_page.setLayout(vbox)
+    main_page.setLayout(Grid_Main)
 BuildMainPage()
 # SettingUI
 def get_registry_value():
@@ -641,8 +635,7 @@ def BuildSettingsPage():
         btn_switch = MediaKeyBox.isChecked()
         loaded_config['mediaKey'] = btn_switch
         config_file(loaded_config)
-        for btn in media_keys:
-            btn.setVisible(btn_switch)
+        SMTC.setVisible(btn_switch)
     MediaKeyBox.clicked.connect(toggleMediaKey)
     settings_layout.addWidget(MediaKeyBox)
     # 開機自啟動
@@ -690,6 +683,17 @@ def BuildSettingsPage():
         config_file(loaded_config)
     KeepTrayBox.clicked.connect(toggleKeepTray)
     settings_layout.addWidget(KeepTrayBox)
+    #OpenRGB
+    OpenRGBBox = QtWidgets.QCheckBox()
+    OpenRGBBox.setText(app.translate('', "Use OpenRGB"))
+    if loaded_config.get('OpenRGB', False):
+        OpenRGBBox.setChecked(True)
+        a_openrgb.Start = True
+    def toggleOpenRGB():
+        loaded_config['OpenRGB'] = a_openrgb.Start = OpenRGBBox.isChecked()
+        config_file(loaded_config)
+    OpenRGBBox.clicked.connect(toggleOpenRGB)
+    settings_layout.addWidget(OpenRGBBox)
     # 檢查更新
     update_button = QtWidgets.QPushButton(app.translate('', "Check for Updates"))
     update_button.clicked.connect(lambda: check_for_updates())
@@ -706,6 +710,7 @@ BuildSettingsPage()
 threading.Thread(target=a_volume.volSyncMain,daemon = True).start()  #音量同步
 threading.Thread(target=a_server.start_server,daemon = True).start() #server
 threading.Thread(target=a_mapping.StartStream,daemon = True).start() #Mapping
+threading.Thread(target=a_openrgb.OpenRGB,daemon=True).start()       #OpenRGB
 threading.Thread(target=printShortMesg,daemon = True).start()        #ShortMesg
 start_HandleReturnMessages() #處理回傳訊息
 # 掃描置裝
@@ -752,4 +757,8 @@ if not loaded_config.get('minimizeAtStart',False):
 
 # 檢查更新
 #check_for_updates(False)
-sys.exit(app.exec())
+#sys.exit(app.exec())
+
+loop = QEventLoop(app)
+with loop:
+    loop.run_forever()

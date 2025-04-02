@@ -90,7 +90,7 @@ def setDevVol(devName,vol):
         if IP:
             # 發送音量到Client
             a_shared.clients[IP]['volume'] = a_shared.Header.volume = vol
-            a_shared.to_server.put([IP,True,a_shared.header_prefix + a_shared.Header.serialize()])
+            a_shared.to_server.put([IP,True,None])
         else:
             a_shared.callbackOn = False
             # 設定本機裝置

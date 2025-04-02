@@ -18,18 +18,25 @@ callbackOn = True
 ###########Class############
 @dataclass
 class AudioHeader:
-    sample_rate: int
-    block_size: int
+    sampleRate: int
+    blockSize: int
     channels: int
     volume: float
+    startStop: bool
     # 格式
-    FORMAT = '!IIIf' #4*4 Bytes
+    FORMAT = '!IIIf?'
     SIZE = struct.calcsize(FORMAT)
 
-    def serialize(self) -> bytes: # 將 header 序列化為固定格式的二進制數據。
-        return struct.pack(self.FORMAT, self.sample_rate, self.block_size,
-                            self.channels ,self.volume)
+    def serialize(self) -> bytes:
+        return struct.pack(
+            self.FORMAT,
+            self.sampleRate,
+            self.blockSize,
+            self.channels,
+            self.volume,
+            self.startStop
+        )
 
-Header = AudioHeader(sample_rate=48000, block_size=320, channels=2, volume=0)
+Header = AudioHeader(sampleRate=48000, blockSize=320, channels=2, volume=0, startStop=False)
 HEADER_SIZE = AudioHeader.SIZE
 header_prefix = struct.pack('!I', HEADER_SIZE)

@@ -4,6 +4,7 @@ import queue
 import threading
 import a_shared
 import time
+import a_openrgb
 #######################
 isRunning = False
 Start = False
@@ -62,6 +63,8 @@ def StartStream():
 
                             outdata_bytes = OutputProcesse(devName,Queue.get(),CHUNK,CH_num).tobytes()
                             a_shared.to_server.put([IP,False,outdata_bytes])
+            if a_openrgb.Start:
+                a_openrgb.RGBQueue.put(indata)
                         
             return (in_data, pyaudio.paContinue)
         return callback_A
@@ -95,6 +98,15 @@ def StartStream():
                     a_shared.to_GUI.put([3,None])
                 
         # 開始
+    # 發送狀態
+    def sendState():
+        '對所有已連線裝置發送狀態'
+        a_shared.Header.volume = -1
+        for devName in outputDevs:
+            IP = outputDevs[devName].get('IP',False)
+            if IP:
+                a_shared.to_server.put([IP,True,None])
+
     while True:
         if Start:
             isRunning = True
@@ -145,10 +157,12 @@ def StartStream():
                     stream_callback=callback_input(InputChannel))
             except Exception as error:
                         print(f'start error:{error}')
-            a_shared.Header.sample_rate = InputRate
+            a_shared.Header.sampleRate = InputRate
             a_shared.Header.channels = InputChannel
-            a_shared.Header.block_size = CHUNK
-            a_shared.header_bytes = a_shared.Header.serialize()
+            a_shared.Header.blockSize = CHUNK
+            a_shared.Header.startStop = True
+            a_openrgb.RGBQueue.empty()
+            sendState()
             Resample_msg = ''
             if Resample:
                 #Resample_msg = f' 重採樣,音質受損!'
@@ -179,4 +193,7 @@ def StartStream():
             a_shared.to_GUI.put([0,''])    # 清空文字 
             a_shared.to_GUI.put([1,isRunning]) # 運作狀態
             a_shared.to_GUI.put([2,'Stop mapping'])
+            a_shared.Header.startStop = False
+            sendState()
+                
         time.sleep(0.1)

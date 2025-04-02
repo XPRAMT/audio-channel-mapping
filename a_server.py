@@ -96,10 +96,10 @@ def send_message():
         if client:
             with clients_lock:
                 if isVol:
-                    outdata = data
+                    outdata = a_shared.header_prefix + a_shared.Header.serialize()
                 else: # 計算總數據大小（header + data）,打包總大小為 4 字節
                     size_prefix = struct.pack('!I',(a_shared.HEADER_SIZE + len(data)) )
-                    outdata = (size_prefix + a_shared.Header.serialize() + data)
+                    outdata = size_prefix + a_shared.Header.serialize() + data
                 #發送
                 try:
                     client['socket'].sendall(outdata) #TCP
