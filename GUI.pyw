@@ -401,7 +401,7 @@ def printShortMesg():
         mesg_label.setText('')
 
 def check_for_updates(failMesg = True):
-    """檢查更新"""
+    "檢查更新(是否開啟彈窗)"
     update_url = "https://api.github.com/repos/XPRAMT/audio-channel-mapping/releases/latest"
     loaded_config = config_file()
     ignore_version = loaded_config.get('ignore_version', '0.0')
@@ -663,6 +663,16 @@ def BuildSettingsPage():
             print("設定開機自啟動失敗：", e)
     StartLoginBox.clicked.connect(toggleStartAtLogin)
     settings_layout.addWidget(StartLoginBox)
+    # 啟動時檢查更新
+    CheckUpdateBox = QtWidgets.QCheckBox()
+    CheckUpdateBox.setText(app.translate('', "Check update at start"))
+    if loaded_config.get('checkUpdataBox',False):
+        CheckUpdateBox.setChecked(True)
+    def toggleminimizeAtStart():
+        loaded_config['checkUpdataBox'] = CheckUpdateBox.isChecked()
+        config_file(loaded_config)
+    CheckUpdateBox.clicked.connect(toggleminimizeAtStart)
+    settings_layout.addWidget(CheckUpdateBox)
     # 啟動時最小化
     MinimizeAtStartBox = QtWidgets.QCheckBox()
     MinimizeAtStartBox.setText(app.translate('', "Minimize at start"))
@@ -756,7 +766,10 @@ if not loaded_config.get('minimizeAtStart',False):
     center(MainWindow)
 
 # 檢查更新
-#check_for_updates(False)
+if loaded_config.get('checkUpdataBox',False):
+    print('[INFO] 檢查更新')
+    check_for_updates(False)
+
 #sys.exit(app.exec())
 
 loop = QEventLoop(app)
