@@ -20,22 +20,24 @@ coName = ''
 CheckBoxs = {}
 VolSlider = {}
 list_Row = []
+ShortMesg = queue.Queue()
 ##########FUN##########
 def ScanClicked(tmpMapRunning=False):
     "掃描 (是否運作)"
     global timerIsReset,loaded_config
     button_scan.setEnabled(False)
     if not tmpMapRunning:
-        tmpMapRunning = a_mapping.isRunning
+        tmpMapRunning = Mapping.isRunning
     # 讀取配置
     loaded_config = config_file()
     # 重置狀態
-    a_mapping.Start = False
+    Mapping.Start = False
     a_volume.Stop = True
     a_volume.initiDev = True
     # 等待重置
     def isReset():
-        if not (a_mapping.isRunning or a_volume.initiDev):
+        if not (Mapping.isRunning or a_volume.initiDev):
+            '如果已停止'
             timerIsReset.stop()
             
             list_audio_devices()
@@ -43,9 +45,9 @@ def ScanClicked(tmpMapRunning=False):
             LayoutClicked()
             Auto_Apply()
             if tmpMapRunning and len(list_Row)>0: # 以裝置數量判斷是否啟動
-                a_mapping.outputDevs = copy.deepcopy(outputDevs)
-                a_mapping.inputDev = inputDev
-                a_mapping.Start = True
+                Mapping.outputDevs = copy.deepcopy(outputDevs)
+                Mapping.inputDev = inputDev
+                threading.Thread(target=Mapping.run,daemon = True).start() 
             button_scan.setEnabled(True)
 
     timerIsReset = QtCore.QTimer()
@@ -278,8 +280,8 @@ def GetChSlider(devName, inch, c):
 
 def MappingClicked():
     '開始/停止按鈕'
-    if a_mapping.isRunning: # 如果正在運作就停止
-        a_mapping.Start = False
+    if Mapping.isRunning: # 如果正在運作就停止
+        Mapping.Start = False
         return
     ScanClicked(True)
     
@@ -321,6 +323,16 @@ def clear_layout(layout):
         # 如果是空間項，直接刪除
         else:
             del item
+
+def printShortMesg():
+    '顯示短消息'
+    while True:
+        txt = ShortMesg.get()
+        print('[ONUI]',txt)
+        mesg_label.setText(txt)
+        timer = 2/(ShortMesg.qsize()+2)
+        time.sleep(timer)
+        mesg_label.setText('')
 
 def config_file(save_config=None):
     """
@@ -382,26 +394,6 @@ def translate():
     Text["Stop"] = app.translate('', "Stop")
     return Translator
 
-# 處理回傳訊息(接收)
-class HandleReturnMessages(QtCore.QThread):
-    ReturnMeg = QtCore.pyqtSignal(object,object)
-    def run(self):
-        while True:
-            # 等待狀態更新
-            state,parameter = a_shared.to_GUI.get()
-            self.ReturnMeg.emit(state,parameter)
-
-# 顯示短消息
-ShortMesg = queue.Queue()
-def printShortMesg():
-    while True:
-        txt = ShortMesg.get()
-        print('[ONUI]',txt)
-        mesg_label.setText(txt)
-        timer = 2/(ShortMesg.qsize()+2)
-        time.sleep(timer)
-        mesg_label.setText('')
-
 def check_for_updates(failMesg = True):
     "檢查更新(是否開啟彈窗)"
     update_url = "https://api.github.com/repos/XPRAMT/audio-channel-mapping/releases/latest"
@@ -444,6 +436,15 @@ def check_for_updates(failMesg = True):
                 f"An error occurred while checking for updates:\n{e}"
             )
 
+class HandleReturnMessages(QtCore.QThread):
+    '處理回傳訊息'
+    ReturnMeg = QtCore.pyqtSignal(object,object)
+    def run(self):
+        while True:
+            # 等待狀態更新
+            state,parameter = a_shared.to_GUI.get()
+            self.ReturnMeg.emit(state,parameter)
+
 ##########初始化##########
 app = QtWidgets.QApplication(sys.argv)
 app.setStyle('Fusion')
@@ -453,6 +454,8 @@ app.setFont(QtGui.QFont('Microsoft JhengHei',12))
 loaded_config = config_file()
 # 建立翻譯器
 translator = translate()
+# 映射
+Mapping = a_mapping.Mapping()
 
 # 建立主頁面
 class main_window(QtWidgets.QWidget):
@@ -463,15 +466,13 @@ class main_window(QtWidgets.QWidget):
         self.init_ui()
         self.init_SystemTray()
         # 啟動狀態更新worker
-        self.worker = None
         self.worker = HandleReturnMessages()
         self.worker.ReturnMeg.connect(self.update)
         self.worker.start()
         # 啟動線程
         threading.Thread(target=a_volume.volSyncMain,daemon = True).start()  #音量同步
         threading.Thread(target=a_server.start_server,daemon = True).start() #server
-        threading.Thread(target=a_mapping.StartStream,daemon = True).start() #Mapping
-        #threading.Thread(target=a_openrgb.OpenRGB,daemon=True).start()       #OpenRGB
+        #threading.Thread(target=a_openrgb.OpenRGB,daemon=True).start()      #OpenRGB
         threading.Thread(target=printShortMesg,daemon = True).start()        #ShortMesg
         # 掃描裝置
         ScanClicked()
@@ -487,7 +488,7 @@ class main_window(QtWidgets.QWidget):
     def init_ui(self):
         '初始化'
         self.MainLayout = QtWidgets.QHBoxLayout(self)
-        self.MainLayout.setContentsMargins(0, 0, 0, 0)
+        self.MainLayout.setContentsMargins(5, 5, 5, 5)
         # 堆疊佈局
         self.leftStacked = QtWidgets.QStackedWidget()
         # 建立主要頁面
@@ -515,7 +516,7 @@ class main_window(QtWidgets.QWidget):
 
         # 建立一個垂直佈局管理器
         vbox = QtWidgets.QVBoxLayout(self.main_page)
-        vbox.setContentsMargins(5, 5, 5, 5)
+        vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         
         # 建立一個CheckBox佈局管理器
@@ -571,7 +572,7 @@ class main_window(QtWidgets.QWidget):
         'Setting UI'
         # 初始化
         settings_layout = QtWidgets.QVBoxLayout(self.settings_page)
-        settings_layout.setContentsMargins(5, 5, 5, 5)
+        settings_layout.setContentsMargins(0, 0, 0, 0)
         settings_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         # 開發者
         settings_label = QtWidgets.QLabel("Developed by XPRAMT")

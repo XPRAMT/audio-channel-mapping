@@ -42,7 +42,6 @@ class controlBtn(QtWidgets.QPushButton):
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
         self.pressed_timestamp = None
-        self.hold_duration = None
 
     def mousePressEvent(self, event):
         self.pressed_timestamp = time.time()  # 記錄按下時的 UNIX 時間戳（秒）
@@ -50,9 +49,13 @@ class controlBtn(QtWidgets.QPushButton):
 
     def mouseReleaseEvent(self, event):
         if self.pressed_timestamp:
-            self.hold_duration = time.time() - self.pressed_timestamp
-        super().mouseReleaseEvent(event)
-
+            if time.time() - self.pressed_timestamp > 0.3:
+                self.blockSignals(True)
+                super().mouseReleaseEvent(event)
+                self.blockSignals(False)
+            else:
+                super().mouseReleaseEvent(event)
+                
 class MediaControlWidget(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -296,11 +299,9 @@ class MediaControlWidget(QtWidgets.QWidget):
             else:
                 self.session.try_play_async()
         elif action == 'next track':
-            if self.btnNext.hold_duration < 0.3:
-                self.session.try_skip_next_async()
+            self.session.try_skip_next_async()
         elif action == 'previous track':
-            if self.btnPrev.hold_duration < 0.3:
-                self.session.try_skip_previous_async()
+            self.session.try_skip_previous_async()
         elif action == 'fwd':
             t = self.session.get_timeline_properties()
             new_pos = t.position.total_seconds() + 5
