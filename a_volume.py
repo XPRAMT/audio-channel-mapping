@@ -166,8 +166,9 @@ def volSyncMain():
         for device in pycaw.AudioUtilities.GetAllDevices():
             state = device.state
             devName = device.FriendlyName
-            if pycaw.AudioUtilities.GetEndpointDataFlow(device.id,1): # 0:output,1:input
-                    devName = devName + '🎙️'
+            if pycaw.AudioUtilities.GetEndpointDataFlow(device.id,1) and devName: 
+                # 0:output,1:input
+                devName = devName + '🎙️'
             if state == pycaw.AudioDeviceState.Active and (devName not in DevS):
                 DevS[devName] = {}
                 Device = DevEnumerator.GetDevice(device.id)

@@ -40,8 +40,13 @@
     </message>
     <message>
       <location filename="GUI.py" line="614" />
-      <source>Use media key</source>
-      <translation>使用媒體控制鍵</translation>
+      <source>Use media controler</source>
+      <translation>使用媒體控制器</translation>
+    </message>
+	<message>
+      <location filename="GUI.py" line="668" />
+      <source>Check update at start</source>
+      <translation>啟動時檢查更新</translation>
     </message>
     <message>
       <location filename="GUI.py" line="627" />

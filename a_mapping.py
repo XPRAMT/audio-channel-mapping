@@ -4,7 +4,7 @@ import queue
 import threading
 import a_shared
 import time
-import a_openrgb
+#import a_openrgb
 #######################
 isRunning = False
 Start = False
@@ -63,8 +63,8 @@ def StartStream():
 
                             outdata_bytes = OutputProcesse(devName,Queue.get(),CHUNK,CH_num).tobytes()
                             a_shared.to_server.put([IP,False,outdata_bytes])
-            if a_openrgb.Start:
-                a_openrgb.RGBQueue.put(indata)
+            #if a_openrgb.Start:
+            #    a_openrgb.RGBQueue.put(indata)
                         
             return (in_data, pyaudio.paContinue)
         return callback_A
@@ -161,7 +161,7 @@ def StartStream():
             a_shared.Header.channels = InputChannel
             a_shared.Header.blockSize = CHUNK
             a_shared.Header.startStop = True
-            a_openrgb.RGBQueue.empty()
+            #a_openrgb.RGBQueue.empty()
             sendState()
             Resample_msg = ''
             if Resample:
