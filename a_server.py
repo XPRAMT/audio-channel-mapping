@@ -123,7 +123,7 @@ def send_message():
                     "sampleRate": a_shared.Header.sampleRate,
                     "blockSize":  a_shared.Header.blockSize,
                     "channels":   a_shared.Header.channels,
-                    "volume":     a_shared.Header.volume,
+                    "volume":     client.get('volume', a_shared.Header.volume),
                     "startStop":  is_streaming,
                     "isPlaying":  a_shared.Header.isPlaying
                 })
