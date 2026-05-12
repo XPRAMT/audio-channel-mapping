@@ -114,8 +114,19 @@ def send_message():
             continue
         with clients_lock:
             if msg_type == 'state':
-                # === TCP: 完整狀態 JSON ===
-                json_str = '{"type":"state",' + a_shared.Header.to_state_json()[1:]
+                # === TCP: 完整狀態 JSON（startStop 依客戶端是否在串流中決定） ===
+                client_MAC = client.get('MAC', '')
+                is_streaming = (a_shared.Header.startStop
+                                and client_MAC in a_shared.Config.get('devList', []))
+                json_str = json.dumps({
+                    "type": "state",
+                    "sampleRate": a_shared.Header.sampleRate,
+                    "blockSize":  a_shared.Header.blockSize,
+                    "channels":   a_shared.Header.channels,
+                    "volume":     a_shared.Header.volume,
+                    "startStop":  is_streaming,
+                    "isPlaying":  a_shared.Header.isPlaying
+                })
                 payload = json_str.encode('utf-8')
                 outdata = len(payload).to_bytes(2, 'big') + payload
                 if a_shared.NETWORK_DEBUG:
