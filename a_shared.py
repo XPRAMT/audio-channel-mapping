@@ -1,6 +1,5 @@
 import queue
-import struct
-from dataclasses import dataclass
+import json
 ###########Queue###########
 to_GUI = queue.Queue()
 to_server = queue.Queue()
@@ -11,32 +10,35 @@ clients = {}
 Config = {}
 AllDevS = {}
 VolChanger = ''
+UDP_PORT_OFFSET = 1  # UDP port = TCP port + 1
 ###########Flag############
 isloopback = True
 SliderOn = True
 callbackOn = True
 ###########Class############
-@dataclass
 class AudioHeader:
-    sampleRate: int
-    blockSize: int
-    channels: int
-    volume: float
-    startStop: bool
-    # 格式
-    FORMAT = '!IIIf?'
-    SIZE = struct.calcsize(FORMAT)
+    """音訊狀態容器，用於跨模組共享並序列化為 JSON 狀態封包"""
+    def __init__(self):
+        self.sampleRate = 48000
+        self.blockSize = 320
+        self.channels = 2
+        self.volume = 0.0
+        self.startStop = False
+        self.isPlaying = False
 
-    def serialize(self) -> bytes:
-        return struct.pack(
-            self.FORMAT,
-            self.sampleRate,
-            self.blockSize,
-            self.channels,
-            self.volume,
-            self.startStop
-        )
+    def to_state_json(self) -> str:
+        """輸出完整狀態 JSON（不含 type 前綴）"""
+        return json.dumps({
+            "sampleRate": self.sampleRate,
+            "blockSize":  self.blockSize,
+            "channels":   self.channels,
+            "volume":     self.volume,
+            "startStop":  self.startStop,
+            "isPlaying":  self.isPlaying
+        })
 
-Header = AudioHeader(sampleRate=48000, blockSize=320, channels=2, volume=0, startStop=False)
-HEADER_SIZE = AudioHeader.SIZE
-header_prefix = struct.pack('!I', HEADER_SIZE)
+    def to_volume_json(self) -> str:
+        """輸出僅音量變更的 JSON"""
+        return json.dumps({"type": "volume", "volume": self.volume})
+
+Header = AudioHeader()

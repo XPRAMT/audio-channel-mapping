@@ -3,6 +3,7 @@ from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessi
 from winsdk.windows.storage.streams import DataReader, Buffer, InputStreamOptions
 from qasync import asyncSlot
 import time
+import a_shared
 
 def TimeSpan(seconds):
     return int(seconds * 10**7)
@@ -62,8 +63,8 @@ class MediaControlWidget(QtWidgets.QWidget):
         self.uiTimeOverride = None  # 用來記錄 UI 操作產生的播放時間
         self.currentInfo = None
         self.Pixmap = None
-        self.changeSizeEvent = False
         self.session = None
+        self.manager = None
         self.init_ui()
 
         # 每秒更新一次狀態
@@ -146,15 +147,14 @@ class MediaControlWidget(QtWidgets.QWidget):
         MainLayout.addLayout(btnLayout)
 
     async def get_session(self):
-        try:
-            manager = await MediaManager.request_async()
-            session = manager.get_current_session()
-            if session is None:
-                return None
-            await session.try_get_media_properties_async()
-            return session
-        except Exception as e:
-            print(f'[ERRO] get_session\n{e}')
+        if self.manager is None:
+            self.manager = await MediaManager.request_async()
+            print(f'[SMTC] get manager')
+        else: 
+            try:
+                return self.manager.get_current_session()
+            except Exception as e:
+                print(f'[SMTC][ERROR] get_session\n{e}')
     
     def resizeEvent(self, event: QtGui.QResizeEvent):
         super().resizeEvent(event)
@@ -188,6 +188,7 @@ class MediaControlWidget(QtWidgets.QWidget):
         self.coverLabel.setPixmap(scaled)
 
     def setLabel(self,info):
+        '將info顯示到UI'
         parts = []
         if info.title:
             parts.append(info.title)
@@ -210,17 +211,27 @@ class MediaControlWidget(QtWidgets.QWidget):
     async def update_status(self):
         '更新狀態'
         self.session = await self.get_session()
+
         if self.session is None:
+            a_shared.Header.isPlaying = False
             self.infoLabel.setVisible(False)
             self.currentTimeLabel.setText("00:00")
             self.totalTimeLabel.setText("00:00")
             self.slider.setValue(0)
             self.Pixmap = None
+            self.setCover()
         else:
-            info = await self.session.try_get_media_properties_async()
-            playback = self.session.get_playback_info()
-            timeline = self.session.get_timeline_properties()
+            try:
+                info = await self.session.try_get_media_properties_async()
+                playback = self.session.get_playback_info()
+                timeline = self.session.get_timeline_properties()
+            except:
+                self.session = None
+                a_shared.Header.isPlaying = False
 
+        if not (self.session is None or info is None):
+            # 同步播放狀態
+            a_shared.Header.isPlaying = (playback.playback_status.value == 4)  # 4 = Playing
             def printInfo():
                 print("----- dir() 列出屬性與其值 -----")
                 for name in dir(info):
@@ -231,20 +242,20 @@ class MediaControlWidget(QtWidgets.QWidget):
 
             # 若有標題則顯示標題，否則顯示 ""
             if info.title != self.currentInfo:
-                #printInfo()
+                printInfo()
                 self.currentInfo = info.title
                 self.setLabel(info)
-                self.changeSizeEvent = True
                 # 取得封面
                 if hasattr(info, 'thumbnail') and info.thumbnail:
                     try:
                         byte_buffer = await read_stream_into_buffer(info.thumbnail)
                         self.Pixmap = QtGui.QPixmap()
                         self.Pixmap.loadFromData(byte_buffer)
-                    except Exception as e:
+                    except:
                         self.Pixmap = None
                 else:
                     self.Pixmap = None
+                self.setCover()
                 
             # 更新進度條與時間顯示
             if self.uiTimeOverride is None: # 沒有UI操作
@@ -280,11 +291,6 @@ class MediaControlWidget(QtWidgets.QWidget):
                 self.control('fwd')
             elif self.btnPrev.isDown() and currentTime - self.btnPrev.pressed_timestamp > 0.3:
                 self.control('rew')
-
-        # 更新封面
-        if self.changeSizeEvent:
-            self.changeSizeEvent = False
-            self.setCover()
 
     def control(self, action):
         '發送控制指令'

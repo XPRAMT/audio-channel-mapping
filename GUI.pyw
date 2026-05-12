@@ -1,10 +1,10 @@
-import time,json,queue,threading,sys,os,ctypes,copy,requests,winreg
+import time,json,queue,threading,sys,os,re,ctypes,copy,requests,winreg
 from PyQt6 import QtWidgets,QtCore,QtGui
 from qasync import QEventLoop
 #import qfluentwidgets
+import qdarktheme
 from functools import partial
 import pyaudiowpatch as pyaudio
-import re
 import a_shared
 import a_mapping
 import a_volume
@@ -358,13 +358,15 @@ def config_file(save_config=None):
             save_config = {}
             ShortMesg.put(app.translate("", "Config created"))
             Save(save_config)
+        if 'port' not in save_config:
+            save_config['port'] = 25505
+            Save(save_config)
         return save_config
     else:
         Save(save_config)
-
+        return save_config
 def translate():
     '建立翻譯器'
-    global Text
     # 獲取系統語言
     def get_display_language():
         try:
@@ -380,15 +382,12 @@ def translate():
                 return value[0]  # 返回第一個語言
         except WindowsError:
             return "Error" 
-    
-    # 檢測系統語言
+
     system_locale = get_display_language()
     print(f"[INFO] locale: {system_locale}")
-    # 創建翻譯器
     Translator = QtCore.QTranslator()
     if Translator.load(f"language/{system_locale}.qm"):
         app.installTranslator(Translator)
-    # 建立翻譯字典
     Text={}
     Text["Start"] = app.translate('', "Start")
     Text["Stop"] = app.translate('', "Stop")
@@ -403,7 +402,8 @@ def check_for_updates(failMesg = True):
         response = requests.get(update_url)
         if response.status_code == 200:
             latest_release = response.json()
-            latest_version = latest_release["name"]
+            latest_version = latest_release["tag_name"]
+            print(f'[UPDATE] current:{curVersion} | github:{latest_version}')
             if latest_version > curVersion and latest_version != ignore_version:
                 reply = QtWidgets.QMessageBox.question(
                     None, 
@@ -447,11 +447,14 @@ class HandleReturnMessages(QtCore.QThread):
 
 ##########初始化##########
 app = QtWidgets.QApplication(sys.argv)
+colors={"[dark]": {"primary": "#D0BCFF","background":"#000000"}}
+#qdarktheme.setup_theme("auto",custom_colors = colors)
 app.setStyle('Fusion')
-# 設定字體
-app.setFont(QtGui.QFont('Microsoft JhengHei',12))
+# 設定字體 
+app.setFont(QtGui.QFont('Microsoft JhengHei',12))   
 # 載入設定
 loaded_config = config_file()
+a_shared.Config['port'] = loaded_config.get('port', 25505)
 # 建立翻譯器
 translator = translate()
 # 映射
@@ -459,6 +462,7 @@ Mapping = a_mapping.Mapping()
 
 # 建立主頁面
 class main_window(QtWidgets.QWidget):
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle(app.translate('', "Audio Mapping") + ' v' + curVersion)
@@ -606,6 +610,9 @@ class main_window(QtWidgets.QWidget):
             MainWindow.SMTC.setVisible(btn_switch)
         MediaKeyBox.clicked.connect(toggleMediaKey)
         settings_layout.addWidget(MediaKeyBox)
+
+        
+
         # 開機自啟動
         StartLoginBox = QtWidgets.QCheckBox()
         StartLoginBox.setText(app.translate('', "Start at Login"))
@@ -683,6 +690,21 @@ class main_window(QtWidgets.QWidget):
             config_file(loaded_config)
         OpenRGBBox.clicked.connect(toggleOpenRGB)
         #settings_layout.addWidget(OpenRGBBox)
+        # 網路 Port 設定
+        port_layout = QtWidgets.QHBoxLayout()
+        port_label = QtWidgets.QLabel(app.translate('', "Network port"))
+        port_spin = QtWidgets.QSpinBox()
+        port_spin.setRange(1024, 65535)
+        port_spin.setValue(loaded_config.get('port', 25505))
+        def changePort():
+            loaded_config['port'] = port_spin.value()
+            config_file(loaded_config)
+            a_shared.Config['port'] = loaded_config['port']
+            ShortMesg.put(app.translate('', "Port saved, restart app to apply"))
+        port_spin.valueChanged.connect(changePort)
+        port_layout.addWidget(port_label)
+        port_layout.addWidget(port_spin)
+        settings_layout.addLayout(port_layout)
         # 檢查更新
         update_button = QtWidgets.QPushButton(app.translate('', "Check for Updates"))
         update_button.clicked.connect(lambda: check_for_updates())
@@ -777,7 +799,6 @@ class main_window(QtWidgets.QWidget):
             QtWidgets.QApplication.instance().setPalette(light_palette)
         else:
             QtWidgets.QApplication.instance().setPalette(dark_palette)
-
 MainWindow = main_window() 
 
 #sys.exit(app.exec())
