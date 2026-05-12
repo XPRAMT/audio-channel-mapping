@@ -83,7 +83,17 @@ def handle_client(client_socket, client_IP):
             if 'mediaKey' in recvDict:
                 a_shared.to_GUI.put([6, recvDict['mediaKey']])
             elif 'startStop' in recvDict:
-                a_shared.to_GUI.put([7, client_MAC])
+                if not a_shared.Header.startStop:
+                    # 全域未串流 → 直接觸發開始
+                    a_shared.to_GUI.put([7, client_MAC])
+                elif client_MAC in a_shared.Config.get('devList', []):
+                    # 全域串流中且客戶端在 devList → 觸發停止
+                    a_shared.to_GUI.put([7, client_MAC])
+                else:
+                    # 全域串流中但客戶端不在 devList → 加入並重新掃描
+                    a_shared.Config.setdefault('devList', []).append(client_MAC)
+                    a_shared.to_GUI.put([3, 'Resacn'])
+                    print(f"[INFO] 客戶端 {client_MAC} 加入串流")
             else:
                 a_shared.clients[client_IP].update(recvDict)
                 if client_MAC in a_shared.AllDevS:
