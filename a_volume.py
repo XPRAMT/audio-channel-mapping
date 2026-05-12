@@ -108,7 +108,7 @@ tmpScales = {}
 def syncVol():
     global tmpScales
     VolChanger = a_shared.VolChanger
-    if VolChanger in a_shared.AllDevS:
+    if VolChanger in a_shared.AllDevS and VolChanger in tmpAllDevS:
         PreVol = tmpAllDevS[VolChanger]['volume']
         CurVol = a_shared.AllDevS[VolChanger]['volume']
         nameFlag=True
@@ -119,7 +119,8 @@ def syncVol():
             else:
                 coName=VolChanger+devName
             # 處理音量變化
-            if a_shared.AllDevS[devName]['switch'] and a_shared.AllDevS[VolChanger]['switch'] and (devName!=VolChanger):
+            if (a_shared.AllDevS[devName]['switch'] and a_shared.AllDevS[VolChanger]['switch']
+                    and (devName!=VolChanger) and devName in tmpAllDevS):
                 def editTmpScale(scale = None):
                     if scale:
                         if nameFlag: # 寫入tmpScales

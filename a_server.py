@@ -71,6 +71,9 @@ def handle_client(client_socket, client_IP):
                 break
             recvDict = json.loads(data.decode('utf-8'))
 
+            if a_shared.NETWORK_DEBUG:
+                print(f'[TCP←] {client_IP}:{client_MAC} {json.dumps(recvDict, ensure_ascii=False)}')
+
             # 交握：儲存 udpPort
             if 'udpPort' in recvDict:
                 with clients_lock:
@@ -115,6 +118,8 @@ def send_message():
                 json_str = '{"type":"state",' + a_shared.Header.to_state_json()[1:]
                 payload = json_str.encode('utf-8')
                 outdata = len(payload).to_bytes(2, 'big') + payload
+                if a_shared.NETWORK_DEBUG:
+                    print(f'[TCP→] {IP} {json_str}')
                 try:
                     client['socket'].sendall(outdata)
                 except Exception as e:
@@ -124,6 +129,8 @@ def send_message():
                 json_str = a_shared.Header.to_volume_json()
                 payload = json_str.encode('utf-8')
                 outdata = len(payload).to_bytes(2, 'big') + payload
+                if a_shared.NETWORK_DEBUG:
+                    print(f'[TCP→] {IP} {json_str}')
                 try:
                     client['socket'].sendall(outdata)
                 except Exception as e:
