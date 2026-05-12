@@ -211,6 +211,7 @@ class MediaControlWidget(QtWidgets.QWidget):
     async def update_status(self):
         '更新狀態'
         self.session = await self.get_session()
+        prev_isPlaying = a_shared.Header.isPlaying
 
         if self.session is None:
             a_shared.Header.isPlaying = False
@@ -291,6 +292,11 @@ class MediaControlWidget(QtWidgets.QWidget):
                 self.control('fwd')
             elif self.btnPrev.isDown() and currentTime - self.btnPrev.pressed_timestamp > 0.3:
                 self.control('rew')
+
+        # 媒體播放狀態變更時，推送給所有連線客戶端
+        if a_shared.Header.isPlaying != prev_isPlaying:
+            for IP in list(a_shared.clients.keys()):
+                a_shared.to_server.put([IP, 'state', None])
 
     def control(self, action):
         '發送控制指令'

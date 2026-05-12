@@ -105,25 +105,29 @@ def send_message():
     udp_seq = 0
     stream_start_time = 0
     while True:
-        IP, isState, data = a_shared.to_server.get()
+        IP, msg_type, data = a_shared.to_server.get()
         client = a_shared.clients.get(IP)
         if not client:
             continue
         with clients_lock:
-            if isState:
-                # === TCP: JSON 狀態封包 ===
-                if a_shared.Header.volume < 0:
-                    # volume = -1 是 sendState() 的訊號，發送完整狀態
-                    json_str = '{"type":"state",' + a_shared.Header.to_state_json()[1:]
-                else:
-                    # 一般音量變更
-                    json_str = a_shared.Header.to_volume_json()
+            if msg_type == 'state':
+                # === TCP: 完整狀態 JSON ===
+                json_str = '{"type":"state",' + a_shared.Header.to_state_json()[1:]
                 payload = json_str.encode('utf-8')
                 outdata = len(payload).to_bytes(2, 'big') + payload
                 try:
                     client['socket'].sendall(outdata)
                 except Exception as e:
-                    print(f'TCP Send Error: {e}')
+                    print(f'TCP Send State Error: {e}')
+            elif msg_type == 'volume':
+                # === TCP: 僅音量 JSON ===
+                json_str = a_shared.Header.to_volume_json()
+                payload = json_str.encode('utf-8')
+                outdata = len(payload).to_bytes(2, 'big') + payload
+                try:
+                    client['socket'].sendall(outdata)
+                except Exception as e:
+                    print(f'TCP Send Volume Error: {e}')
             else:
                 # === UDP: 音頻封包 ===
                 udp_port = client.get('udpPort')

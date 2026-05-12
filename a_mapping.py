@@ -4,6 +4,7 @@ import queue
 import threading
 import a_shared
 import time
+from scipy.signal import butter, sosfilt
 #import a_openrgb
 #######################
 class Mapping():
@@ -14,6 +15,7 @@ class Mapping():
         self.inputDev = None   # 輸入固定參數
         self.np_type = np.float32
         self.pya_type = pyaudio.paFloat32
+        self.sos = self.design_lowpass_transition_sos()
 
     def getTime(self):
         'h:m:s.ms'
@@ -41,6 +43,24 @@ class Mapping():
                     indices = np.linspace(0, self.CHUNK, CHUNKFix+1)
                     outdata[:,outCh] = np.interp(indices[:-1], np.arange(self.CHUNK),indata[:,inCh])*vol
         return outdata
+    
+    def design_lowpass_transition_sos(self,fs=48000, low=190, high=230, order=6):
+        sos = butter(order, low / (0.5 * fs), btype='low', output='sos')
+        return sos
+    
+    def EQ(self,indata: np.ndarray) -> np.ndarray:
+        """
+        fs : int
+            取樣頻率 (Sampling Rate)，單位 Hz
+        """ 
+        if indata.ndim == 1:
+            # 單聲道
+            y = sosfilt(self.sos, indata)
+        else:
+            # 多聲道處理
+            y = np.stack([sosfilt(self.sos, indata[:, ch]) for ch in range(indata.shape[1])], axis=1)
+
+        return y.astype(self.np_type)*5
 
     def callback_input(self,inCh):
         '輸入處理'
@@ -55,6 +75,7 @@ class Mapping():
                         CH_num = Dev['maxOutputChannels']
                         delay = round(a_shared.Config[devName]['delay']/self.Frametime)
                         Qsize = Queue.qsize()
+                        Dev['qsize'] = Qsize
                         if Qsize <= delay:
                             #print(f'[Time] {getTime()} Qsize:{Qsize} wait')
                             pass
@@ -76,19 +97,22 @@ class Mapping():
         '本機輸出裝置'
         def callback_B(in_data, frame_count, time_info, status):
             Qsize = Queue.qsize()
+            self.outputDevs[outdevName]['qsize'] = Qsize
             delay = int(a_shared.Config[outdevName]['delay']/self.Frametime)
 
             if Qsize < delay:
                 #print(f'[Time] {getTime()} Qsize:{Qsize} wait')
                 outdata = np.zeros((CHUNKFix,CH_num),dtype=self.np_type)
             else:
-                if Qsize > delay + 2:
-                    #print(f'[Time] {getTime()} Qsize:{Qsize} 降低延遲')
-                    while Queue.qsize() > delay + 2:
+                if Qsize > delay + 1:
+                    print(f'[Time] {self.getTime()} Qsize:{Qsize} delay:{delay} 降低延遲')
+                    while Queue.qsize() > delay + 1:
                         Queue.get_nowait()
                     
                 indata = Queue.get()
                 outdata = self.OutputProcesse(outdevName,indata,CHUNKFix,CH_num)
+                if "DualSense" in outdevName:
+                    outdata = self.EQ(outdata)
 
             return (outdata, pyaudio.paContinue)
         return callback_B
@@ -97,18 +121,17 @@ class Mapping():
         '顯示延遲'
         for devName,Dev in self.outputDevs.items():
             if Dev['switch']:
-                Qsize = Dev['queue'].qsize()
-                a_shared.to_GUI.put([5,[devName,f'{Qsize * self.Frametime:02.0f}ms']])
+                Qsize = Dev.get('qsize',0)
+                a_shared.to_GUI.put([5,[devName,f'{Qsize* self.Frametime:02.0f}ms']])
                 if Qsize > 200: # 延遲太多重新掃描
                     a_shared.to_GUI.put([3,None])
                 
     def sendState(self):
         '對所有已連線裝置發送狀態'
-        a_shared.Header.volume = -1
         for devName in self.outputDevs:
             IP = self.outputDevs[devName].get('IP',False)
             if IP:
-                a_shared.to_server.put([IP,True,None])
+                a_shared.to_server.put([IP,'state',None])
 
     def run(self):
         '啟動'
@@ -176,10 +199,10 @@ class Mapping():
         timer = 0
         self.Start = True
         while self.Start:
-            if timer > 2: # 秒
+            if timer > 0.5: # 秒
                 timer = 0
-                threading.Thread(target=self.queueDelay,daemon = True).start() 
-                #queueDelay()
+                #threading.Thread(target=self.queueDelay,daemon = True).start() 
+                self.queueDelay()
             time.sleep(0.1)
             timer +=0.1
         # 結束處理
