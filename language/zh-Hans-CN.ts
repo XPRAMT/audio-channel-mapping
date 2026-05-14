@@ -36,7 +36,7 @@
     <message>
       <location filename="GUI.py" line="468" />
       <source>Audio Mapping</source>
-      <translation>音频映射</translation>
+      <translation>声道映射</translation>
     </message>
     <message>
       <location filename="GUI.py" line="592" />

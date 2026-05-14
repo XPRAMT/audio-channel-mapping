@@ -36,7 +36,7 @@
     <message>
       <location filename="GUI.py" line="468" />
       <source>Audio Mapping</source>
-      <translation>音訊對應</translation>
+      <translation>聲道映射</translation>
     </message>
     <message>
       <location filename="GUI.py" line="592" />
@@ -76,12 +76,12 @@
     <message>
       <location filename="GUI.py" line="695" />
       <source>Network port</source>
-      <translation>網路埠</translation>
+      <translation>網路端口</translation>
     </message>
     <message>
       <location filename="GUI.py" line="703" />
       <source>Port saved, restart app to apply</source>
-      <translation>埠已儲存，重新啟動應用程式以套用</translation>
+      <translation>端口已儲存，重新啟動應用程式以套用</translation>
     </message>
     <message>
       <location filename="GUI.py" line="709" />

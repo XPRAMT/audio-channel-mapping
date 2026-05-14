@@ -103,5 +103,10 @@
       <source>Language saved, restart app to apply</source>
       <translation type="unfinished" />
     </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>System Default</source>
+      <translation type="unfinished" />
+    </message>
   </context>
 </TS>

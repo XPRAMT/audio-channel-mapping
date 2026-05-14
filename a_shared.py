@@ -15,7 +15,7 @@ UDP_PORT_OFFSET = 1  # UDP port = TCP port + 1
 isloopback = True
 SliderOn = True
 callbackOn = True
-NETWORK_DEBUG = False  # 設為 True 時顯示所有 TCP 收發訊息
+NETWORK_DEBUG = True  # 設為 True 時顯示所有 TCP 收發訊息
 ###########Class############
 class AudioHeader:
     """音訊狀態容器，用於跨模組共享並序列化為 JSON 狀態封包"""

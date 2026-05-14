@@ -85,6 +85,7 @@ def handle_client(client_socket, client_IP):
             elif 'startStop' in recvDict:
                 if not a_shared.Header.startStop:
                     # 全域未串流 → 直接觸發開始
+                    a_shared.Config['devList'].append(client_MAC)
                     a_shared.to_GUI.put([7, client_MAC])
                 elif client_MAC in a_shared.Config.get('devList', []):
                     # 全域串流中且客戶端在 devList → 觸發停止

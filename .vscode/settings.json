@@ -1,4 +1,5 @@
 {
     "editor.fontSize": 13,
-    "editor.fontLigatures": false
+    "editor.fontLigatures": false,
+    "editor.fontFamily": "'JetBrains Maple Mono'"
 }
