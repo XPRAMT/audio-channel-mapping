@@ -1,4 +1,5 @@
-import time,json,queue,threading,sys,os,re,ctypes,copy,requests,winreg,packaging
+import time,json,queue,threading,sys,os,re,ctypes,copy,requests,winreg
+import packaging.version
 from PyQt6 import QtWidgets,QtCore,QtGui
 from qasync import QEventLoop
 #import qfluentwidgets
