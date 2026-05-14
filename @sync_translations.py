@@ -39,6 +39,7 @@ TARGETS = {
     "pt":         LANG_DIR / "pt.ts",
     "ru":         LANG_DIR / "ru.ts",
     "ja":         LANG_DIR / "ja.ts",
+    "ko":         LANG_DIR / "ko.ts",
 }
 
 DEEPSEEK_API_KEY = "sk-d2bead50e3254a40a58e9d678e6b9cad"
@@ -221,6 +222,7 @@ def main():
                 "pt":         "Portuguese",
                 "ru":         "Russian",
                 "ja":         "Japanese",
+                "ko":         "Korean",
             }.get(lang, lang)
 
             sources_to_translate = [src for _, src in to_translate]
