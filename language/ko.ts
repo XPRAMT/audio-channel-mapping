@@ -103,5 +103,10 @@
       <source>Language saved, restart app to apply</source>
       <translation>언어가 저장되었습니다. 적용하려면 앱을 다시 시작하세요</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>System Default</source>
+      <translation>시스템 기본값</translation>
+    </message>
   </context>
 </TS>

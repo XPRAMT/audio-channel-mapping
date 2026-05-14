@@ -103,5 +103,10 @@
       <source>Language saved, restart app to apply</source>
       <translation>تم حفظ اللغة، أعد تشغيل التطبيق للتطبيق</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>System Default</source>
+      <translation>إعدادات النظام الافتراضية</translation>
+    </message>
   </context>
 </TS>

@@ -118,19 +118,26 @@ def build_ts_xml(entries: list[dict], base_ts_text: str) -> str:
     return f'{header}<context>\n    <name />\n{body}\n  </context>\n</TS>\n'
 
 
-# ── DeepSeek 翻譯 ──
-def translate_via_deepseek(sources: list[str], target_lang: str) -> list[str]:
-    """批次呼叫 DeepSeek API 翻譯多個字串"""
+# ── DeepSeek 批次翻譯 ──
+def translate_via_deepseek_batch(sources: list[str], lang_map: dict) -> dict:
+    """
+    單次 API 呼叫翻譯多個語言，節省 token。
+    lang_map: {code: lang_name}  例如 {"zh-TW": "Traditional Chinese", ...}
+    回傳: {code: [translation, ...]}
+    """
     if not sources:
-        return []
+        return {code: [] for code in lang_map}
 
-    # 建立 prompt
+    lang_list = "\n".join(f'{code}: {name}' for code, name in lang_map.items())
     lines = "\n".join(f'{i+1}. "{s}"' for i, s in enumerate(sources))
     prompt = (
-        f"Translate the following English UI strings into {target_lang}. "
-        f"Keep the translation concise and suitable for a software UI. "
-        f"Output ONLY the translated text, one per line, in the same order. "
-        f"Do NOT include numbers, quotes, or any extra text:\n\n{lines}"
+        f"Translate the following English UI strings into each target language.\n"
+        f"Keep translations concise and suitable for a software UI.\n\n"
+        f"==SOURCE STRINGS==\n{lines}\n\n"
+        f"==TARGET LANGUAGES==\n{lang_list}\n\n"
+        f"Output ONLY a valid JSON object in this format:\n"
+        f'{{"lang_code": ["translation1", "translation2", ...]}}\n'
+        f"One array per language, same order as source strings."
     )
 
     headers = {
@@ -140,34 +147,41 @@ def translate_via_deepseek(sources: list[str], target_lang: str) -> list[str]:
     payload = {
         "model": "deepseek-chat",
         "messages": [
-            {"role": "system", "content": f"You are a professional software translator. Always translate to {target_lang} only."},
+            {"role": "system", "content": "You are a professional software translator. Output only valid JSON, no markdown, no extra text."},
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 1024,
+        "max_tokens": 4096,
     }
 
     for attempt in range(3):
         try:
-            resp = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=30)
+            resp = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=60)
             if resp.status_code == 200:
-                result = resp.json()["choices"][0]["message"]["content"].strip()
-                # 按行分割，過濾空行
-                translations = [line.strip() for line in result.split("\n") if line.strip()]
-                # 確保數量匹配
-                while len(translations) < len(sources):
-                    translations.append("")
-                return translations[:len(sources)]
+                raw = resp.json()["choices"][0]["message"]["content"].strip()
+                # 清理可能的 markdown 代碼塊標記
+                raw = re.sub(r'^```(?:json)?\s*', '', raw)
+                raw = re.sub(r'\s*```$', '', raw)
+                result = json.loads(raw)
+
+                # 補齊缺失的語言 / 缺失的條目
+                out = {}
+                for code in lang_map:
+                    arr = result.get(code, [])
+                    while len(arr) < len(sources):
+                        arr.append("")
+                    out[code] = arr[:len(sources)]
+                return out
             else:
                 print(f"  ⚠ DeepSeek API 錯誤 (attempt {attempt+1}): HTTP {resp.status_code}")
                 if attempt < 2:
-                    time.sleep(2)
+                    time.sleep(3)
         except Exception as e:
             print(f"  ⚠ DeepSeek API 例外 (attempt {attempt+1}): {e}")
             if attempt < 2:
-                time.sleep(2)
+                time.sleep(3)
 
-    return [""] * len(sources)
+    return {code: [""] * len(sources) for code in lang_map}
 
 
 # ── 主流程 ──
@@ -182,6 +196,25 @@ def main():
     base_text = BASE_TS.read_text(encoding="utf-8")
     print(f"\n📄 translations.ts: {len(base_sources)} 個條目")
 
+    # ── 第一階段：收集所有語言需要翻譯的條目 ──
+    lang_name_map = {
+        "zh-Hant-TW": "Traditional Chinese (zh-TW)",
+        "zh-Hans-CN": "Simplified Chinese (zh-CN)",
+        "hi":         "Hindi",
+        "es":         "Spanish",
+        "fr":         "French",
+        "ar":         "Arabic",
+        "bn":         "Bengali",
+        "pt":         "Portuguese",
+        "ru":         "Russian",
+        "ja":         "Japanese",
+        "ko":         "Korean",
+    }
+
+    all_needs = {}    # {lang_code: [source_str, ...]}
+    all_keep = {}     # {lang_code: {source: existing_translation}}
+    total_new = 0
+
     for lang, filepath in TARGETS.items():
         print(f"\n{'─' * 40}")
         print(f"🎯 目標: {filepath.name} ({lang})")
@@ -191,85 +224,90 @@ def main():
             filepath.write_text(base_text, encoding="utf-8")
             existing = {}
         else:
-            # 2. 解析現有翻譯
             existing = parse_ts_as_dict(filepath)
         print(f"  現有已翻譯: {sum(1 for v in existing.values() if v is not None)}/{len(existing)}")
 
-        # 3. 找出需要翻譯的條目
-        to_translate = []      # (index_in_base, source)
-        keep_translation = {}  # source → existing translation
-
-        for i, entry in enumerate(base_entries):
+        to_translate = []
+        keep_translation = {}
+        for entry in base_entries:
             src = entry["source"]
             old_trans = existing.get(src)
             if old_trans is not None:
                 keep_translation[src] = old_trans
             else:
-                to_translate.append((i, src))
+                to_translate.append(src)
 
         print(f"  需新增/翻譯: {len(to_translate)} 個條目")
+        all_needs[lang] = to_translate
+        all_keep[lang] = keep_translation
+        total_new += len(to_translate)
 
-        # 4. 顯示待翻譯條目，確認後呼叫 DeepSeek
-        if to_translate:
-            lang_name = {
-                "zh-Hant-TW": "Traditional Chinese (zh-TW)",
-                "zh-Hans-CN": "Simplified Chinese (zh-CN)",
-                "hi":         "Hindi",
-                "es":         "Spanish",
-                "fr":         "French",
-                "ar":         "Arabic",
-                "bn":         "Bengali",
-                "pt":         "Portuguese",
-                "ru":         "Russian",
-                "ja":         "Japanese",
-                "ko":         "Korean",
-            }.get(lang, lang)
+    # ── 第二階段：一次性確認 + API 呼叫 ──
+    if total_new == 0:
+        print(f"\n{'=' * 60}")
+        print("✅ 所有語言皆已是最新，無需翻譯！")
+        print("=" * 60)
+        return
 
-            sources_to_translate = [src for _, src in to_translate]
-            print(f"  📋 待翻譯 ({len(sources_to_translate)} 個):")
-            for src in sources_to_translate:
-                print(f"     - {src}")
-            print(f"  🌐 目標語言: {lang_name}")
+    print(f"\n{'=' * 60}")
+    print(f"📋 總計 {total_new} 個待翻譯條目（分布在 {sum(1 for v in all_needs.values() if v)} 種語言中）")
+    print("─" * 40)
+    for lang, needs in all_needs.items():
+        if needs:
+            lang_display = lang_name_map.get(lang, lang)
+            print(f"  {lang_display} ({lang}): {len(needs)} 個")
+            for s in needs:
+                print(f"     - {s}")
+    print("=" * 60)
 
-            answer = input(f"  ❓ 是否調用 DeepSeek 翻譯? (y/n): ").strip().lower()
-            if answer != "y":
-                print(f"  ⏭️ 已取消，跳過翻譯")
-                # 未翻譯的條目保留為 unfinished
-                for _, src in to_translate:
-                    keep_translation[src] = ""
-                # 繼續寫入（會輸出 type="unfinished"）
-            else:
-                print(f"  🤖 調用 DeepSeek 翻譯中...")
+    answer = input(f"❓ 是否一次調用 DeepSeek 翻譯以上全部? (y/n): ").strip().lower()
+    if answer != "y":
+        print("⏭️ 已取消")
+        # 未翻譯的寫入仍會保留為 unfinished
+        for lang, filepath in TARGETS.items():
+            keep_translation = all_keep[lang]
+            for src in all_needs[lang]:
+                keep_translation[src] = ""
+            new_entries = [_make_entry(e, keep_translation) for e in base_entries]
+            filepath.write_text(build_ts_xml(new_entries, base_text), encoding="utf-8")
+            print(f"  💾 {filepath.name} (保留未翻譯)")
+        return
 
-                translations = translate_via_deepseek(sources_to_translate, lang_name)
+    # 收集需要翻譯的語言
+    active_langs = {lang: lang_name_map.get(lang, lang)
+                    for lang, needs in all_needs.items() if needs}
 
-                for (idx, src), trans in zip(to_translate, translations):
+    print(f"\n🤖 單次 API 呼叫 → 翻譯 {total_new} 個條目到 {len(active_langs)} 種語言...")
+    all_translations = translate_via_deepseek_batch(base_sources, active_langs)
+
+    # ── 分發結果並寫入 ──
+    for lang, filepath in TARGETS.items():
+        keep_translation = all_keep[lang]
+        if lang in all_translations:
+            for src, trans in zip(base_sources, all_translations[lang]):
+                if src in all_needs[lang]:
                     keep_translation[src] = trans
                     status = "✅" if trans else "❌"
-                    print(f"    {status} [{src}] → [{trans}]")
+                    print(f"  {status} [{lang}] {src} → {trans}")
 
-                time.sleep(1)
-
-        # 5. 重建目標 ts 檔案（順序完全跟隨 translations.ts）
-        new_entries = []
-        for entry in base_entries:
-            src = entry["source"]
-            trans = keep_translation.get(src, "")
-            new_entry = {
-                "location": entry["location"],
-                "source": src,
-                "translation": trans,
-                "type": "" if trans and trans != src else "unfinished",
-            }
-            new_entries.append(new_entry)
-
-        new_xml = build_ts_xml(new_entries, base_text)
-        filepath.write_text(new_xml, encoding="utf-8")
+        new_entries = [_make_entry(e, keep_translation) for e in base_entries]
+        filepath.write_text(build_ts_xml(new_entries, base_text), encoding="utf-8")
         print(f"  💾 已寫入: {filepath.name}")
 
     print(f"\n{'=' * 60}")
     print("🎉 同步完成！")
     print("=" * 60)
+
+
+def _make_entry(entry, keep: dict) -> dict:
+    src = entry["source"]
+    trans = keep.get(src, "")
+    return {
+        "location": entry["location"],
+        "source": src,
+        "translation": trans,
+        "type": "" if trans else "unfinished",
+    }
 
 
 if __name__ == "__main__":

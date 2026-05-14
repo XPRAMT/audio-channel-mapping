@@ -103,5 +103,10 @@
       <source>Language saved, restart app to apply</source>
       <translation>Idioma guardado, reinicia la app para aplicar</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>System Default</source>
+      <translation>Predeterminado del sistema</translation>
+    </message>
   </context>
 </TS>

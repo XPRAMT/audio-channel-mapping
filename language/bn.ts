@@ -103,5 +103,10 @@
       <source>Language saved, restart app to apply</source>
       <translation>ভাষা সংরক্ষিত, প্রয়োগ করতে অ্যাপ পুনরায় চালু করুন</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>System Default</source>
+      <translation>সিস্টেম ডিফল্ট</translation>
+    </message>
   </context>
 </TS>

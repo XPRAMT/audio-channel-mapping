@@ -103,5 +103,10 @@
       <source>Language saved, restart app to apply</source>
       <translation>语言已保存，重启应用以生效</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>System Default</source>
+      <translation>系统默认</translation>
+    </message>
   </context>
 </TS>
