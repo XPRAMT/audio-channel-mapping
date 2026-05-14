@@ -1,4 +1,4 @@
-import time,json,queue,threading,sys,os,re,ctypes,copy,requests,winreg
+import time,json,queue,threading,sys,os,re,ctypes,copy,requests,winreg,packaging
 from PyQt6 import QtWidgets,QtCore,QtGui
 from qasync import QEventLoop
 #import qfluentwidgets
@@ -21,7 +21,7 @@ def asset_path(relative_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 ##########參數##########
-curVersion = "26.05.14"
+curVersion = "4.0"
 appName = "AudioMapping"
 coName = ''
 CheckBoxs = {}
@@ -436,7 +436,7 @@ def check_for_updates(failMesg = True):
             latest_release = response.json()
             latest_version = latest_release["tag_name"]
             print(f'[UPDATE] current:{curVersion} | github:{latest_version}')
-            if latest_version > curVersion and latest_version != ignore_version:
+            if packaging.version.parse(latest_version) > packaging.version.parse(curVersion) and latest_version != ignore_version:
                 reply = QtWidgets.QMessageBox.question(
                     None, 
                     "Update Available",
