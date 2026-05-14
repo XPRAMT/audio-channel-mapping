@@ -4,74 +4,94 @@
   <context>
     <name />
     <message>
-      <location filename="GUI.py" line="51" />
+      <location filename="GUI.py" line="44" />
       <source>Scan successful</source>
       <translation>スキャン成功</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="313" />
-      <source>Config created</source>
-      <translation>設定が作成されました</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="328" />
+      <location filename="GUI.py" line="297" />
       <source>Saved</source>
       <translation>保存済み</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="339" />
+      <location filename="GUI.py" line="308" />
       <source>Deleted</source>
       <translation>削除済み</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="496" />
+      <location filename="GUI.py" line="359" />
+      <source>Config created</source>
+      <translation>設定作成完了</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="392" />
       <source>Start</source>
       <translation>開始</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="497" />
+      <location filename="GUI.py" line="393" />
       <source>Stop</source>
       <translation>停止</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="603" />
-      <source>Use short name</source>
-      <translation>短い名前を使用する</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="614" />
-      <source>Use media key</source>
-      <translation>メディアキーを使用する</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="627" />
-      <source>Start at Login</source>
-      <translation>ログイン時に自動起動</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="652" />
-      <source>Minimize at start</source>
-      <translation>起動時に最小化する</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="662" />
-      <source>Minimize to system tray on close</source>
-      <translation>閉じる際にシステムトレイに最小化する</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="671" />
-      <source>Check for Updates</source>
-      <translation>更新を確認する</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="675" />
-      <source>Back</source>
-      <translation>戻る</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="714" />
+      <location filename="GUI.py" line="468" />
       <source>Audio Mapping</source>
       <translation>オーディオマッピング</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="592" />
+      <source>Use short name</source>
+      <translation>短縮名を使用</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="603" />
+      <source>Use media controler</source>
+      <translation>メディアコントローラーを使用</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="618" />
+      <source>Start at Login</source>
+      <translation>ログイン時に起動</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="654" />
+      <source>Check update at start</source>
+      <translation>起動時に更新を確認</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="664" />
+      <source>Minimize at start</source>
+      <translation>起動時に最小化</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="674" />
+      <source>Minimize to system tray on close</source>
+      <translation>閉じるときにシステムトレイに最小化</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="684" />
+      <source>Use OpenRGB</source>
+      <translation>OpenRGBを使用</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="695" />
+      <source>Network port</source>
+      <translation>ネットワークポート</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="703" />
+      <source>Port saved, restart app to apply</source>
+      <translation>ポートを保存しました。適用にはアプリの再起動が必要です</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="709" />
+      <source>Check for Updates</source>
+      <translation>更新を確認</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="713" />
+      <source>Back</source>
+      <translation>戻る</translation>
     </message>
   </context>
 </TS>

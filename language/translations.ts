@@ -9,78 +9,88 @@
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="310" />
-      <source>Config created</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="GUI.py" line="325" />
+      <location filename="GUI.py" line="297" />
       <source>Saved</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="336" />
+      <location filename="GUI.py" line="308" />
       <source>Deleted</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="520" />
+      <location filename="GUI.py" line="359" />
+      <source>Config created</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="392" />
       <source>Start</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="521" />
+      <location filename="GUI.py" line="393" />
       <source>Stop</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="620" />
+      <location filename="GUI.py" line="468" />
+      <source>Audio Mapping</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="592" />
       <source>Use short name</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="631" />
-      <source>Use media control</source>
+      <location filename="GUI.py" line="603" />
+      <source>Use media controler</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="643" />
+      <location filename="GUI.py" line="618" />
       <source>Start at Login</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="668" />
+      <location filename="GUI.py" line="654" />
       <source>Check update at start</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="678" />
+      <location filename="GUI.py" line="664" />
       <source>Minimize at start</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="688" />
+      <location filename="GUI.py" line="674" />
       <source>Minimize to system tray on close</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="698" />
+      <location filename="GUI.py" line="684" />
       <source>Use OpenRGB</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="708" />
+      <location filename="GUI.py" line="695" />
+      <source>Network port</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="703" />
+      <source>Port saved, restart app to apply</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="709" />
       <source>Check for Updates</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="GUI.py" line="712" />
+      <location filename="GUI.py" line="713" />
       <source>Back</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="GUI.py" line="752" />
-      <source>Audio Mapping</source>
       <translation type="unfinished" />
     </message>
   </context>

@@ -4,79 +4,94 @@
   <context>
     <name />
     <message>
-      <location filename="GUI.py" line="51" />
+      <location filename="GUI.py" line="44" />
       <source>Scan successful</source>
       <translation>掃描成功</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="313" />
-      <source>Config created</source>
-      <translation>已建立配置</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="328" />
+      <location filename="GUI.py" line="297" />
       <source>Saved</source>
       <translation>已儲存</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="339" />
+      <location filename="GUI.py" line="308" />
       <source>Deleted</source>
       <translation>已刪除</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="496" />
-      <source>Start</source>
-      <translation>啟動</translation>
+      <location filename="GUI.py" line="359" />
+      <source>Config created</source>
+      <translation>設定已建立</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="497" />
+      <location filename="GUI.py" line="392" />
+      <source>Start</source>
+      <translation>開始</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="393" />
       <source>Stop</source>
       <translation>停止</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="603" />
-      <source>Use short name</source>
-      <translation>使用簡短名稱</translation>
+      <location filename="GUI.py" line="468" />
+      <source>Audio Mapping</source>
+      <translation>音訊對應</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="614" />
+      <location filename="GUI.py" line="592" />
+      <source>Use short name</source>
+      <translation>使用簡稱</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="603" />
       <source>Use media controler</source>
       <translation>使用媒體控制器</translation>
     </message>
-	<message>
-      <location filename="GUI.py" line="668" />
+    <message>
+      <location filename="GUI.py" line="618" />
+      <source>Start at Login</source>
+      <translation>登入時啟動</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="654" />
       <source>Check update at start</source>
       <translation>啟動時檢查更新</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="627" />
-      <source>Start at Login</source>
-      <translation>開機時自啟動</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="652" />
+      <location filename="GUI.py" line="664" />
       <source>Minimize at start</source>
-      <translation>啟動時縮小到系統匣</translation>
+      <translation>啟動時最小化</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="662" />
+      <location filename="GUI.py" line="674" />
       <source>Minimize to system tray on close</source>
-      <translation>關閉時縮小到系統匣</translation>
+      <translation>關閉時最小化至系統匣</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="671" />
+      <location filename="GUI.py" line="684" />
+      <source>Use OpenRGB</source>
+      <translation>使用 OpenRGB</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="695" />
+      <source>Network port</source>
+      <translation>網路埠</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="703" />
+      <source>Port saved, restart app to apply</source>
+      <translation>埠已儲存，重新啟動應用程式以套用</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="709" />
       <source>Check for Updates</source>
       <translation>檢查更新</translation>
     </message>
     <message>
-      <location filename="GUI.py" line="675" />
+      <location filename="GUI.py" line="713" />
       <source>Back</source>
       <translation>返回</translation>
-    </message>
-    <message>
-      <location filename="GUI.py" line="714" />
-      <source>Audio Mapping</source>
-      <translation>聲道映射</translation>
     </message>
   </context>
 </TS>
