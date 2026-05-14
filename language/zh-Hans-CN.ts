@@ -93,5 +93,15 @@
       <source>Back</source>
       <translation>返回</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>Language</source>
+      <translation>语言</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="600" />
+      <source>Language saved, restart app to apply</source>
+      <translation>语言已保存，重启应用以生效</translation>
+    </message>
   </context>
 </TS>

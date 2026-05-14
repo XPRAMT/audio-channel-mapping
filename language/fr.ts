@@ -6,102 +6,102 @@
     <message>
       <location filename="GUI.py" line="44" />
       <source>Scan successful</source>
-      <translation type="unfinished" />
+      <translation>Scan réussi</translation>
     </message>
     <message>
       <location filename="GUI.py" line="297" />
       <source>Saved</source>
-      <translation type="unfinished" />
+      <translation>Enregistré</translation>
     </message>
     <message>
       <location filename="GUI.py" line="308" />
       <source>Deleted</source>
-      <translation type="unfinished" />
+      <translation>Supprimé</translation>
     </message>
     <message>
       <location filename="GUI.py" line="359" />
       <source>Config created</source>
-      <translation type="unfinished" />
+      <translation>Configuration créée</translation>
     </message>
     <message>
       <location filename="GUI.py" line="392" />
       <source>Start</source>
-      <translation type="unfinished" />
+      <translation>Démarrer</translation>
     </message>
     <message>
       <location filename="GUI.py" line="393" />
       <source>Stop</source>
-      <translation type="unfinished" />
+      <translation>Arrêter</translation>
     </message>
     <message>
       <location filename="GUI.py" line="468" />
       <source>Audio Mapping</source>
-      <translation type="unfinished" />
+      <translation>Mappage audio</translation>
     </message>
     <message>
       <location filename="GUI.py" line="592" />
       <source>Use short name</source>
-      <translation type="unfinished" />
+      <translation>Utiliser le nom court</translation>
     </message>
     <message>
       <location filename="GUI.py" line="603" />
       <source>Use media controler</source>
-      <translation type="unfinished" />
+      <translation>Utiliser le contrôleur média</translation>
     </message>
     <message>
       <location filename="GUI.py" line="618" />
       <source>Start at Login</source>
-      <translation type="unfinished" />
+      <translation>Démarrer à l'ouverture de session</translation>
     </message>
     <message>
       <location filename="GUI.py" line="654" />
       <source>Check update at start</source>
-      <translation type="unfinished" />
+      <translation>Vérifier les mises à jour au démarrage</translation>
     </message>
     <message>
       <location filename="GUI.py" line="664" />
       <source>Minimize at start</source>
-      <translation type="unfinished" />
+      <translation>Réduire au démarrage</translation>
     </message>
     <message>
       <location filename="GUI.py" line="674" />
       <source>Minimize to system tray on close</source>
-      <translation type="unfinished" />
+      <translation>Réduire dans la barre d'état système à la fermeture</translation>
     </message>
     <message>
       <location filename="GUI.py" line="684" />
       <source>Use OpenRGB</source>
-      <translation type="unfinished" />
+      <translation>Utiliser OpenRGB</translation>
     </message>
     <message>
       <location filename="GUI.py" line="695" />
       <source>Network port</source>
-      <translation type="unfinished" />
+      <translation>Port réseau</translation>
     </message>
     <message>
       <location filename="GUI.py" line="703" />
       <source>Port saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>Port enregistré, redémarrez l'application pour appliquer</translation>
     </message>
     <message>
       <location filename="GUI.py" line="709" />
       <source>Check for Updates</source>
-      <translation type="unfinished" />
+      <translation>Rechercher des mises à jour</translation>
     </message>
     <message>
       <location filename="GUI.py" line="713" />
       <source>Back</source>
-      <translation type="unfinished" />
+      <translation>Retour</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language</source>
-      <translation type="unfinished" />
+      <translation>Langue</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>Langue sauvegardée, redémarrez l'application pour appliquer</translation>
     </message>
   </context>
 </TS>

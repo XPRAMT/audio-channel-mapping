@@ -365,28 +365,52 @@ def config_file(save_config=None):
     else:
         Save(save_config)
         return save_config
-def translate():
-    '建立翻譯器'
-    # 獲取系統語言
-    def get_display_language():
-        try:
-            # 註冊表鍵
-            sub_key = r"Control Panel\International\User Profile"
-            value_name = "Languages"
-            # 打開註冊表鍵
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key) as registry_key:
-                # 讀取多重字符串（MULTI_SZ）類型的值
-                value, _ = winreg.QueryValueEx(registry_key, value_name)
-            # 返回多重字符串中的第一個語言
-            if value:
-                return value[0]  # 返回第一個語言
-        except WindowsError:
-            return "Error" 
+def get_display_language():
+    "從 Windows 註冊表讀取系統顯示語言"
+    try:
+        sub_key = r"Control Panel\International\User Profile"
+        value_name = "Languages"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key) as registry_key:
+            value, _ = winreg.QueryValueEx(registry_key, value_name)
+        if value:
+            return value[0]
+    except WindowsError:
+        return "en"
+    return "en"
 
+# 語言代碼 → 顯示名稱
+LANG_NAMES = {
+    "zh-Hans-CN": "简体中文", "zh-Hant-TW": "繁體中文",
+    "hi": "हिन्दी", "es": "Español", "fr": "Français",
+    "ar": "العربية", "bn": "বাংলা", "pt": "Português",
+    "ru": "Русский", "ja": "日本語", "ko": "한국어",
+}
+
+def scan_language_qm():
+    "掃描 language/ 目錄下所有 .qm 檔案，回傳 [(代碼, 顯示名稱), ...]"
+    lang_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "language")
+    if not os.path.isdir(lang_dir):
+        return []
+    result = []
+    for f in sorted(os.listdir(lang_dir)):
+        if f.endswith('.qm') and f != 'translations.qm':
+            code = f[:-3]  # 去掉 .qm 副檔名
+            name = LANG_NAMES.get(code, code)
+            result.append((code, name))
+    return result
+
+def translate():
     system_locale = get_display_language()
-    print(f"[INFO] locale: {system_locale}")
+    print(f"[INFO] system locale: {system_locale}")
+
+    # config 手動選擇優先，否則用系統語言
+    loaded_config = config_file()
+    chosen = loaded_config.get('language', '')
+    locale = chosen if chosen else system_locale
+    print(f"[INFO] using locale: {locale}")
+
     Translator = QtCore.QTranslator()
-    if Translator.load(f"language/{system_locale}.qm"):
+    if Translator.load(f"language/{locale}.qm"):
         app.installTranslator(Translator)
     Text={}
     Text["Start"] = app.translate('', "Start")
@@ -598,6 +622,30 @@ class main_window(QtWidgets.QWidget):
             ScanClicked()
         shortNameBox.clicked.connect(toggleShortName)
         settings_layout.addWidget(shortNameBox)
+        # 語言選擇
+        lang_layout = QtWidgets.QHBoxLayout()
+        lang_label = QtWidgets.QLabel(app.translate('', "Language"))
+        lang_combo = QtWidgets.QComboBox()
+        available_langs = scan_language_qm()
+        system_locale = get_display_language()
+        current_lang = loaded_config.get('language', system_locale)
+        selected_idx = 0
+        for i, (code, name) in enumerate(available_langs):
+            lang_combo.addItem(f'{name}  ({code})', code)
+            if code == current_lang:
+                selected_idx = i
+        def changeLanguage():
+            code = lang_combo.currentData()
+            loaded_config['language'] = code
+            config_file(loaded_config)
+            ShortMesg.put(app.translate('', "Language saved, restart app to apply"))
+        lang_combo.currentIndexChanged.connect(changeLanguage)
+        lang_combo.blockSignals(True)
+        lang_combo.setCurrentIndex(selected_idx)
+        lang_combo.blockSignals(False)
+        lang_layout.addWidget(lang_label)
+        lang_layout.addWidget(lang_combo)
+        settings_layout.addLayout(lang_layout)
         # media key
         MediaKeyBox = QtWidgets.QCheckBox()
         MediaKeyBox.setText(app.translate('', "Use media controler"))

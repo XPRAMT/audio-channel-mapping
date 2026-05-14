@@ -6,102 +6,102 @@
     <message>
       <location filename="GUI.py" line="44" />
       <source>Scan successful</source>
-      <translation type="unfinished" />
+      <translation>스캔 성공</translation>
     </message>
     <message>
       <location filename="GUI.py" line="297" />
       <source>Saved</source>
-      <translation type="unfinished" />
+      <translation>저장됨</translation>
     </message>
     <message>
       <location filename="GUI.py" line="308" />
       <source>Deleted</source>
-      <translation type="unfinished" />
+      <translation>삭제됨</translation>
     </message>
     <message>
       <location filename="GUI.py" line="359" />
       <source>Config created</source>
-      <translation type="unfinished" />
+      <translation>설정 생성됨</translation>
     </message>
     <message>
       <location filename="GUI.py" line="392" />
       <source>Start</source>
-      <translation type="unfinished" />
+      <translation>시작</translation>
     </message>
     <message>
       <location filename="GUI.py" line="393" />
       <source>Stop</source>
-      <translation type="unfinished" />
+      <translation>중지</translation>
     </message>
     <message>
       <location filename="GUI.py" line="468" />
       <source>Audio Mapping</source>
-      <translation type="unfinished" />
+      <translation>오디오 매핑</translation>
     </message>
     <message>
       <location filename="GUI.py" line="592" />
       <source>Use short name</source>
-      <translation type="unfinished" />
+      <translation>짧은 이름 사용</translation>
     </message>
     <message>
       <location filename="GUI.py" line="603" />
       <source>Use media controler</source>
-      <translation type="unfinished" />
+      <translation>미디어 컨트롤러 사용</translation>
     </message>
     <message>
       <location filename="GUI.py" line="618" />
       <source>Start at Login</source>
-      <translation type="unfinished" />
+      <translation>로그인 시 시작</translation>
     </message>
     <message>
       <location filename="GUI.py" line="654" />
       <source>Check update at start</source>
-      <translation type="unfinished" />
+      <translation>시작 시 업데이트 확인</translation>
     </message>
     <message>
       <location filename="GUI.py" line="664" />
       <source>Minimize at start</source>
-      <translation type="unfinished" />
+      <translation>시작 시 최소화</translation>
     </message>
     <message>
       <location filename="GUI.py" line="674" />
       <source>Minimize to system tray on close</source>
-      <translation type="unfinished" />
+      <translation>닫을 때 시스템 트레이로 최소화</translation>
     </message>
     <message>
       <location filename="GUI.py" line="684" />
       <source>Use OpenRGB</source>
-      <translation type="unfinished" />
+      <translation>OpenRGB 사용</translation>
     </message>
     <message>
       <location filename="GUI.py" line="695" />
       <source>Network port</source>
-      <translation type="unfinished" />
+      <translation>네트워크 포트</translation>
     </message>
     <message>
       <location filename="GUI.py" line="703" />
       <source>Port saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>포트 저장됨, 적용하려면 앱 재시작</translation>
     </message>
     <message>
       <location filename="GUI.py" line="709" />
       <source>Check for Updates</source>
-      <translation type="unfinished" />
+      <translation>업데이트 확인</translation>
     </message>
     <message>
       <location filename="GUI.py" line="713" />
       <source>Back</source>
-      <translation type="unfinished" />
+      <translation>뒤로</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language</source>
-      <translation type="unfinished" />
+      <translation>언어</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>언어가 저장되었습니다. 적용하려면 앱을 다시 시작하세요</translation>
     </message>
   </context>
 </TS>

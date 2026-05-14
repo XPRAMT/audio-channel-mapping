@@ -6,102 +6,102 @@
     <message>
       <location filename="GUI.py" line="44" />
       <source>Scan successful</source>
-      <translation type="unfinished" />
+      <translation>স্ক্যান সফল</translation>
     </message>
     <message>
       <location filename="GUI.py" line="297" />
       <source>Saved</source>
-      <translation type="unfinished" />
+      <translation>সংরক্ষিত</translation>
     </message>
     <message>
       <location filename="GUI.py" line="308" />
       <source>Deleted</source>
-      <translation type="unfinished" />
+      <translation>মুছে ফেলা</translation>
     </message>
     <message>
       <location filename="GUI.py" line="359" />
       <source>Config created</source>
-      <translation type="unfinished" />
+      <translation>কনফিগ তৈরি</translation>
     </message>
     <message>
       <location filename="GUI.py" line="392" />
       <source>Start</source>
-      <translation type="unfinished" />
+      <translation>শুরু</translation>
     </message>
     <message>
       <location filename="GUI.py" line="393" />
       <source>Stop</source>
-      <translation type="unfinished" />
+      <translation>থামুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="468" />
       <source>Audio Mapping</source>
-      <translation type="unfinished" />
+      <translation>অডিও ম্যাপিং</translation>
     </message>
     <message>
       <location filename="GUI.py" line="592" />
       <source>Use short name</source>
-      <translation type="unfinished" />
+      <translation>সংক্ষিপ্ত নাম ব্যবহার করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="603" />
       <source>Use media controler</source>
-      <translation type="unfinished" />
+      <translation>মিডিয়া কন্ট্রোলার ব্যবহার করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="618" />
       <source>Start at Login</source>
-      <translation type="unfinished" />
+      <translation>লগইনে শুরু করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="654" />
       <source>Check update at start</source>
-      <translation type="unfinished" />
+      <translation>শুরুতে আপডেট চেক করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="664" />
       <source>Minimize at start</source>
-      <translation type="unfinished" />
+      <translation>শুরুতে ছোট করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="674" />
       <source>Minimize to system tray on close</source>
-      <translation type="unfinished" />
+      <translation>বন্ধ করলে সিস্টেম ট্রেতে ছোট করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="684" />
       <source>Use OpenRGB</source>
-      <translation type="unfinished" />
+      <translation>OpenRGB ব্যবহার করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="695" />
       <source>Network port</source>
-      <translation type="unfinished" />
+      <translation>নেটওয়ার্ক পোর্ট</translation>
     </message>
     <message>
       <location filename="GUI.py" line="703" />
       <source>Port saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>পোর্ট সংরক্ষিত, প্রয়োগ করতে অ্যাপ পুনরায় চালু করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="709" />
       <source>Check for Updates</source>
-      <translation type="unfinished" />
+      <translation>আপডেটের জন্য চেক করুন</translation>
     </message>
     <message>
       <location filename="GUI.py" line="713" />
       <source>Back</source>
-      <translation type="unfinished" />
+      <translation>পিছনে</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language</source>
-      <translation type="unfinished" />
+      <translation>ভাষা</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>ভাষা সংরক্ষিত, প্রয়োগ করতে অ্যাপ পুনরায় চালু করুন</translation>
     </message>
   </context>
 </TS>

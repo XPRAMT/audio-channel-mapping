@@ -6,102 +6,102 @@
     <message>
       <location filename="GUI.py" line="44" />
       <source>Scan successful</source>
-      <translation type="unfinished" />
+      <translation>تم الفحص بنجاح</translation>
     </message>
     <message>
       <location filename="GUI.py" line="297" />
       <source>Saved</source>
-      <translation type="unfinished" />
+      <translation>تم الحفظ</translation>
     </message>
     <message>
       <location filename="GUI.py" line="308" />
       <source>Deleted</source>
-      <translation type="unfinished" />
+      <translation>تم الحذف</translation>
     </message>
     <message>
       <location filename="GUI.py" line="359" />
       <source>Config created</source>
-      <translation type="unfinished" />
+      <translation>تم إنشاء الإعداد</translation>
     </message>
     <message>
       <location filename="GUI.py" line="392" />
       <source>Start</source>
-      <translation type="unfinished" />
+      <translation>بدء</translation>
     </message>
     <message>
       <location filename="GUI.py" line="393" />
       <source>Stop</source>
-      <translation type="unfinished" />
+      <translation>إيقاف</translation>
     </message>
     <message>
       <location filename="GUI.py" line="468" />
       <source>Audio Mapping</source>
-      <translation type="unfinished" />
+      <translation>تخطيط الصوت</translation>
     </message>
     <message>
       <location filename="GUI.py" line="592" />
       <source>Use short name</source>
-      <translation type="unfinished" />
+      <translation>استخدام الاسم المختصر</translation>
     </message>
     <message>
       <location filename="GUI.py" line="603" />
       <source>Use media controler</source>
-      <translation type="unfinished" />
+      <translation>استخدام وحدة التحكم بالوسائط</translation>
     </message>
     <message>
       <location filename="GUI.py" line="618" />
       <source>Start at Login</source>
-      <translation type="unfinished" />
+      <translation>تشغيل عند تسجيل الدخول</translation>
     </message>
     <message>
       <location filename="GUI.py" line="654" />
       <source>Check update at start</source>
-      <translation type="unfinished" />
+      <translation>التحقق من التحديث عند البدء</translation>
     </message>
     <message>
       <location filename="GUI.py" line="664" />
       <source>Minimize at start</source>
-      <translation type="unfinished" />
+      <translation>تصغير عند البدء</translation>
     </message>
     <message>
       <location filename="GUI.py" line="674" />
       <source>Minimize to system tray on close</source>
-      <translation type="unfinished" />
+      <translation>تصغير إلى علبة النظام عند الإغلاق</translation>
     </message>
     <message>
       <location filename="GUI.py" line="684" />
       <source>Use OpenRGB</source>
-      <translation type="unfinished" />
+      <translation>استخدام OpenRGB</translation>
     </message>
     <message>
       <location filename="GUI.py" line="695" />
       <source>Network port</source>
-      <translation type="unfinished" />
+      <translation>منفذ الشبكة</translation>
     </message>
     <message>
       <location filename="GUI.py" line="703" />
       <source>Port saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>تم حفظ المنفذ، أعد تشغيل التطبيق للتطبيق</translation>
     </message>
     <message>
       <location filename="GUI.py" line="709" />
       <source>Check for Updates</source>
-      <translation type="unfinished" />
+      <translation>التحقق من وجود تحديثات</translation>
     </message>
     <message>
       <location filename="GUI.py" line="713" />
       <source>Back</source>
-      <translation type="unfinished" />
+      <translation>رجوع</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language</source>
-      <translation type="unfinished" />
+      <translation>اللغة</translation>
     </message>
     <message>
       <location filename="GUI.py" line="600" />
       <source>Language saved, restart app to apply</source>
-      <translation type="unfinished" />
+      <translation>تم حفظ اللغة، أعد تشغيل التطبيق للتطبيق</translation>
     </message>
   </context>
 </TS>
