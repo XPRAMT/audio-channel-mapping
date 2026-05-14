@@ -196,7 +196,7 @@ def main():
 
         print(f"  需新增/翻譯: {len(to_translate)} 個條目")
 
-        # 4. 呼叫 DeepSeek 批次翻譯
+        # 4. 顯示待翻譯條目，確認後呼叫 DeepSeek
         if to_translate:
             lang_name = {
                 "zh-Hant-TW": "Traditional Chinese (zh-TW)",
@@ -205,17 +205,29 @@ def main():
             }.get(lang, lang)
 
             sources_to_translate = [src for _, src in to_translate]
-            print(f"  🤖 調用 DeepSeek 翻譯 {len(sources_to_translate)} 個條目 → {lang_name}...")
+            print(f"  📋 待翻譯 ({len(sources_to_translate)} 個):")
+            for src in sources_to_translate:
+                print(f"     - {src}")
+            print(f"  🌐 目標語言: {lang_name}")
 
-            translations = translate_via_deepseek(sources_to_translate, lang_name)
+            answer = input(f"  ❓ 是否調用 DeepSeek 翻譯? (y/n): ").strip().lower()
+            if answer != "y":
+                print(f"  ⏭️ 已取消，跳過翻譯")
+                # 未翻譯的條目保留為 unfinished
+                for _, src in to_translate:
+                    keep_translation[src] = ""
+                # 繼續寫入（會輸出 type="unfinished"）
+            else:
+                print(f"  🤖 調用 DeepSeek 翻譯中...")
 
-            for (idx, src), trans in zip(to_translate, translations):
-                keep_translation[src] = trans
-                status = "✅" if trans else "❌"
-                print(f"    {status} [{src}] → [{trans}]")
+                translations = translate_via_deepseek(sources_to_translate, lang_name)
 
-            # API 呼叫間隔
-            time.sleep(1)
+                for (idx, src), trans in zip(to_translate, translations):
+                    keep_translation[src] = trans
+                    status = "✅" if trans else "❌"
+                    print(f"    {status} [{src}] → [{trans}]")
+
+                time.sleep(1)
 
         # 5. 重建目標 ts 檔案（順序完全跟隨 translations.ts）
         new_entries = []
