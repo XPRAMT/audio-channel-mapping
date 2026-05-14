@@ -5,7 +5,7 @@ a = Analysis(
     ['GUI.pyw'],
     pathex=[],
     binaries=[],
-    datas=[('..\.venv\Lib\site-packages\zeroconf', 'zeroconf')],
+    datas=[('..\.venv\Lib\site-packages\zeroconf', 'zeroconf'), ('icon', 'icon'), ('language', 'language')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

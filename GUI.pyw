@@ -2,7 +2,7 @@ import time,json,queue,threading,sys,os,re,ctypes,copy,requests,winreg
 from PyQt6 import QtWidgets,QtCore,QtGui
 from qasync import QEventLoop
 #import qfluentwidgets
-import qdarktheme
+#import qdarktheme
 from functools import partial
 import pyaudiowpatch as pyaudio
 import a_shared
@@ -13,6 +13,13 @@ import a_server
 import a_smtc
 
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
+##########FUN##########
+def asset_path(relative_path):
+    "回傳資產路徑，支援開發/PyInstaller 打包模式"
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+
 ##########參數##########
 curVersion = "26.05.14"
 appName = "AudioMapping"
@@ -491,7 +498,7 @@ class main_window(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(app.translate('', "Audio Mapping") + ' v' + curVersion)
-        self.setWindowIcon(QtGui.QIcon('C:/APP/@develop/audio-channel-mapping/icon/icon.ico'))
+        self.setWindowIcon(QtGui.QIcon(asset_path('icon/icon.ico')))
         self.init_ui()
         self.init_SystemTray()
         # 啟動狀態更新worker
@@ -786,7 +793,7 @@ class main_window(QtWidgets.QWidget):
         exit_action.triggered.connect(lambda: sys.exit()) 
         tray_menu = QtWidgets.QMenu()
         tray_menu.addAction(exit_action) 
-        self.tray_icon = QtWidgets.QSystemTrayIcon(QtGui.QIcon('C:/APP/@develop/audio-channel-mapping/icon/icon.ico'))
+        self.tray_icon = QtWidgets.QSystemTrayIcon(QtGui.QIcon(asset_path('icon/icon.ico')))
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.activated.connect(lambda reason: showMainWindow() if reason == QtWidgets.QSystemTrayIcon.ActivationReason.Trigger else None)
         self.tray_icon.show()

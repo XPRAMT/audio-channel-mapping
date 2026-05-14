@@ -2,8 +2,15 @@ from PyQt6 import QtWidgets, QtCore, QtGui
 from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as MediaManager
 from winsdk.windows.storage.streams import DataReader, Buffer, InputStreamOptions
 from qasync import asyncSlot
+import sys, os
 import time
 import a_shared
+
+def asset_path(relative_path):
+    "回傳資產路徑，支援開發/PyInstaller 打包模式"
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 def TimeSpan(seconds):
     return int(seconds * 10**7)
@@ -77,7 +84,7 @@ class MediaControlWidget(QtWidgets.QWidget):
         MainLayout = QtWidgets.QVBoxLayout(self)
         MainLayout.setContentsMargins(0, 0, 0, 0)
         # 封面
-        self.albumDefault = QtGui.QPixmap("icon/album_default.jpg")
+        self.albumDefault = QtGui.QPixmap(asset_path("icon/album_default.jpg"))
         self.coverLabel = QtWidgets.QLabel()
         self.coverLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.coverLabel.setMinimumSize(200,200)
@@ -117,11 +124,11 @@ class MediaControlWidget(QtWidgets.QWidget):
         self.btnPlayPause = QtWidgets.QPushButton('')
         self.btnFwd = QtWidgets.QPushButton('')
         self.btnNext = controlBtn('')
-        self.btnPrev.setIcon(QtGui.QIcon("C:\APP\@develop/audio-channel-mapping\icon\widget_previous_normal.png"))
+        self.btnPrev.setIcon(QtGui.QIcon(asset_path("icon/widget_previous_normal.png")))
         self.btnPrev.setIconSize(QtCore.QSize(50, 50))
         self.btnPlayPause.setIcon(self.btnPlayIcon)
         self.btnPlayPause.setIconSize(QtCore.QSize(50, 50))
-        self.btnNext.setIcon(QtGui.QIcon("C:\APP\@develop/audio-channel-mapping\icon/widget_next_normal.png"))
+        self.btnNext.setIcon(QtGui.QIcon(asset_path("icon/widget_next_normal.png")))
         self.btnNext.setIconSize(QtCore.QSize(50, 50))
 
         self.btnPrev.clicked.connect(lambda: self.control('previous track'))
