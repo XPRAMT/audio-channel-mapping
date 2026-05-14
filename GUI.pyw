@@ -384,6 +384,7 @@ LANG_NAMES = {
     "hi": "हिन्दी", "es": "Español", "fr": "Français",
     "ar": "العربية", "bn": "বাংলা", "pt": "Português",
     "ru": "Русский", "ja": "日本語", "ko": "한국어",
+    "en": "English",
 }
 
 def scan_language_qm():
@@ -410,7 +411,7 @@ def translate():
     print(f"[INFO] using locale: {locale}")
 
     Translator = QtCore.QTranslator()
-    if Translator.load(f"language/{locale}.qm"):
+    if locale != 'en' and Translator.load(f"language/{locale}.qm"):
         app.installTranslator(Translator)
     Text={}
     Text["Start"] = app.translate('', "Start")
@@ -622,30 +623,7 @@ class main_window(QtWidgets.QWidget):
             ScanClicked()
         shortNameBox.clicked.connect(toggleShortName)
         settings_layout.addWidget(shortNameBox)
-        # 語言選擇
-        lang_layout = QtWidgets.QHBoxLayout()
-        lang_label = QtWidgets.QLabel(app.translate('', "Language"))
-        lang_combo = QtWidgets.QComboBox()
-        available_langs = scan_language_qm()
-        system_locale = get_display_language()
-        current_lang = loaded_config.get('language', system_locale)
-        selected_idx = 0
-        for i, (code, name) in enumerate(available_langs):
-            lang_combo.addItem(f'{name}  ({code})', code)
-            if code == current_lang:
-                selected_idx = i
-        def changeLanguage():
-            code = lang_combo.currentData()
-            loaded_config['language'] = code
-            config_file(loaded_config)
-            ShortMesg.put(app.translate('', "Language saved, restart app to apply"))
-        lang_combo.currentIndexChanged.connect(changeLanguage)
-        lang_combo.blockSignals(True)
-        lang_combo.setCurrentIndex(selected_idx)
-        lang_combo.blockSignals(False)
-        lang_layout.addWidget(lang_label)
-        lang_layout.addWidget(lang_combo)
-        settings_layout.addLayout(lang_layout)
+        
         # media key
         MediaKeyBox = QtWidgets.QCheckBox()
         MediaKeyBox.setText(app.translate('', "Use media controler"))
@@ -738,6 +716,40 @@ class main_window(QtWidgets.QWidget):
             config_file(loaded_config)
         OpenRGBBox.clicked.connect(toggleOpenRGB)
         #settings_layout.addWidget(OpenRGBBox)
+
+        # 語言選擇
+        lang_layout = QtWidgets.QHBoxLayout()
+        lang_label = QtWidgets.QLabel(app.translate('', "Language"))
+        lang_combo = QtWidgets.QComboBox()
+        available_langs = scan_language_qm()
+        system_locale = get_display_language()
+        sys_name = LANG_NAMES.get(system_locale, system_locale)
+        # 第一項：系統預設
+        lang_combo.addItem(f'{app.translate("", "System Default")}', '')
+        # 第二項：English（原始語言，不載入 .qm）
+        lang_combo.addItem('English  (en)', 'en')
+        current_lang = loaded_config.get('language', '')
+        selected_idx = 0
+        if current_lang == 'en':
+            selected_idx = 1
+        for i, (code, name) in enumerate(available_langs):
+            lang_combo.addItem(f'{name}  ({code})', code)
+            if code == current_lang:
+                selected_idx = i + 2  # +2 因為前面有系統預設和 English
+        def changeLanguage():
+            code = lang_combo.currentData()
+            loaded_config['language'] = code
+            config_file(loaded_config)
+            ShortMesg.put(app.translate('', "Language saved, restart app to apply"))
+        lang_combo.currentIndexChanged.connect(changeLanguage)
+        lang_combo.blockSignals(True)
+        lang_combo.setCurrentIndex(selected_idx)
+        lang_combo.blockSignals(False)
+        lang_layout.addWidget(lang_label)
+        lang_layout.addWidget(lang_combo)
+        settings_layout.addLayout(lang_layout)
+        
+
         # 網路 Port 設定
         port_layout = QtWidgets.QHBoxLayout()
         port_label = QtWidgets.QLabel(app.translate('', "Network port"))
@@ -753,6 +765,8 @@ class main_window(QtWidgets.QWidget):
         port_layout.addWidget(port_label)
         port_layout.addWidget(port_spin)
         settings_layout.addLayout(port_layout)
+
+        
         # 檢查更新
         update_button = QtWidgets.QPushButton(app.translate('', "Check for Updates"))
         update_button.clicked.connect(lambda: check_for_updates())
