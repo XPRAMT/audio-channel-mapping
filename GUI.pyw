@@ -14,7 +14,7 @@ import a_smtc
 
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
 ##########參數##########
-curVersion = "4.0"
+curVersion = "26.05.14"
 appName = "AudioMapping"
 coName = ''
 CheckBoxs = {}
@@ -761,7 +761,6 @@ class main_window(QtWidgets.QWidget):
             case 6: # 媒體鍵
                 self.SMTC.control(parameter)
             case 7: # 播放/暫停
-                a_shared.Config['devList'].append(parameter)
                 MappingClicked()
 
     def changeEvent(self, event: QtCore.QEvent):

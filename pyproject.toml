@@ -1,0 +1,44 @@
+# pyproject.toml
+
+[build-system]
+# 定義建構專案所需的套件，setuptools 是標準選擇
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# --- 以下資訊來自 version.txt ---
+# ProductName 和 FileDescription
+name = "audio-channel-mapping"
+# ProductVersion 和 filevers
+version = "26.05.14"
+# FileDescription
+description = "An application for audio channel mapping"
+# CompanyName
+authors = [
+  { name = "XPRAMT" },
+]
+# LegalCopyright
+license = { text = "Proprietary" } 
+
+# 建議加上 Python 版本限制
+requires-python = ">=3.10"
+
+# --- 以下依賴來自 requirements.txt ---
+# 將 pyinstaller 以外的執行時期依賴放在這裡
+dependencies = [
+    "comtypes",
+    "numpy",
+    "pycaw",
+    "PyQt6",
+    "PyAudioWPatch",
+    "qasync",
+    "requests",
+    "keyboard",
+    "winsdk",
+]
+
+# 將 pyinstaller 這種開發/建構工具放在可選依賴中是一個好習慣
+[project.optional-dependencies]
+dev = [
+    "pyinstaller",
+]

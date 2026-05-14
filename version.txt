@@ -4,7 +4,7 @@
 #
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(4, 0, 0, 0),
+    filevers=(26, 5, 14, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x4,
@@ -21,7 +21,7 @@ VSVersionInfo(
            StringStruct('FileDescription', 'audio channel mapping'),
            StringStruct('LegalCopyright', 'Copyright (C) XPRAMT'),
            StringStruct('ProductName', 'audio channel mapping'),
-           StringStruct('ProductVersion', '4.0.0.0')])
+           StringStruct('ProductVersion', '26.05.14.0')])
       ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]
