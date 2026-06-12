@@ -173,17 +173,18 @@ def list_audio_devices():
         VolSlider[devName].setValue(round(vol*maxVol))
         VolSlider[devName].valueChanged.connect(partial(GetVolSlider,devName))
         VolLabel[devName] = QtWidgets.QLabel()
-        VolLabel[devName].setFixedWidth(45)
         volLabelFont = VolLabel[devName].font()
-        volLabelFont.setPixelSize(10)
+        volLabelFont.setPixelSize(5)
         VolLabel[devName].setFont(volLabelFont)
         VolLabel[devName].setFixedHeight(VolLabel[devName].fontMetrics().height())
         VolLabel[devName].setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed,
                                         QtWidgets.QSizePolicy.Policy.Fixed)
         VolLabel[devName].setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
         SetVolLabel(devName)
+        VolSlider[devName].setFixedHeight(max(VolLabel[devName].height(), VolSlider[devName].sizeHint().height() // 2))
         hbox_vol = QtWidgets.QHBoxLayout()
         hbox_vol.setContentsMargins(0, 0, 0, 0)
+        hbox_vol.setSpacing(2)
         hbox_vol.addWidget(VolLabel[devName])
         hbox_vol.addWidget(VolSlider[devName])
         cbox.addLayout(hbox_vol)
@@ -273,6 +274,7 @@ def SetVolLabel(devName):
     maxVol = a_shared.AllDevS[devName]['maxVol']
     vol = round(VolSlider[devName].value()/maxVol*100)
     VolLabel[devName].setText(f'{vol}%')
+    VolLabel[devName].setFixedWidth(VolLabel[devName].fontMetrics().horizontalAdvance(VolLabel[devName].text()))
 
 def GetVolSlider(devName):
     '音量滑條變動'
