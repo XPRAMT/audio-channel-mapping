@@ -22,9 +22,12 @@ def asset_path(relative_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 ##########參數##########
-curVersion = "4.0"
+curVersion = "26.05.14"
 appName = "AudioMapping"
 coName = ''
+QUICK_MAPPING_CONFIG_KEY = 'quickMappingSlots'
+QUICK_MAPPING_INDEX_KEY = 'quickMappingSlotIndex'
+quickMappingSlotIndex = 0
 CheckBoxs = {}
 VolSlider = {}
 list_Row = []
@@ -225,10 +228,7 @@ def Auto_Apply():
     '自動套用'
     def Apply(devName,devSetting):
         SpinBoxs[devName].setValue(devSetting['delay'])
-        for idx,outchs in enumerate(ChSlider[devName]):
-            chVal = devSetting['channels'][idx] if idx < len(devSetting['channels']) else 0
-            if int(chVal) < len(outchs):
-                outchs[int(chVal)].setValue(int((chVal % 1)*1000))
+        SetChannelSliders(devName, devSetting.get('channels', []))
 
     # 更新配置
     if coName in loaded_config:
@@ -285,6 +285,86 @@ def GetChSlider(devName, inch, c):
             inSlider.setValue(0)
             inSlider.blockSignals(False)
     #print(f'{a_shared.Config}')
+
+def current_mapping_snapshot():
+    '取得目前聲道映射快照'
+    snapshot = {'devList': list(a_shared.Config.get('devList', [])), 'maps': {}}
+    for devName in snapshot['devList']:
+        devSetting = a_shared.Config.get(devName, {})
+        snapshot['maps'][devName] = {
+            'delay': devSetting.get('delay', 0),
+            'channels': list(devSetting.get('channels', []))
+        }
+    return snapshot
+
+def SetChannelSliders(devName, channels):
+    '設定聲道映射滑條'
+    if devName not in ChSlider:
+        return
+    a_shared.Config[devName]['channels'] = [0 for _ in ChSlider[devName]]
+    for c,outchs in enumerate(ChSlider[devName]):
+        chVal = channels[c] if c < len(channels) else 0
+        try:
+            chVal = float(chVal)
+        except (TypeError, ValueError):
+            chVal = 0
+        inch = int(chVal)
+        sliderValue = max(0, min(100, int(round((chVal % 1) * 1000))))
+        for inSlider in outchs:
+            inSlider.blockSignals(True)
+            inSlider.setValue(0)
+            inSlider.blockSignals(False)
+        if inch < len(outchs):
+            outchs[inch].blockSignals(True)
+            outchs[inch].setValue(sliderValue)
+            outchs[inch].blockSignals(False)
+            a_shared.Config[devName]['channels'][c] = inch + sliderValue/1000
+
+def ApplyMappingSnapshot(snapshot):
+    '套用聲道映射快照'
+    maps = snapshot.get('maps', {})
+    for devName,devSetting in maps.items():
+        if devName not in a_shared.Config:
+            continue
+        delay = devSetting.get('delay', 0)
+        if devName in SpinBoxs:
+            SpinBoxs[devName].setValue(delay)
+        else:
+            a_shared.Config[devName]['delay'] = delay
+        SetChannelSliders(devName, devSetting.get('channels', []))
+
+def SaveQuickMappingClicked():
+    '保存快速聲道映射'
+    global loaded_config,quickMappingSlotIndex
+    snapshot = current_mapping_snapshot()
+    if len(snapshot['maps']) == 0:
+        ShortMesg.put(app.translate('', 'No mapping to save'))
+        return
+    loaded_config = config_file()
+    slots = loaded_config.setdefault(QUICK_MAPPING_CONFIG_KEY, [])
+    if len(slots) < 2:
+        slots.append(snapshot)
+        quickMappingSlotIndex = len(slots) - 1
+    else:
+        quickMappingSlotIndex = int(loaded_config.get(QUICK_MAPPING_INDEX_KEY, quickMappingSlotIndex)) % 2
+        slots[quickMappingSlotIndex] = snapshot
+    loaded_config[QUICK_MAPPING_INDEX_KEY] = quickMappingSlotIndex
+    config_file(loaded_config)
+    ShortMesg.put(f'{app.translate("", "Saved")} {quickMappingSlotIndex + 1}/2')
+
+def SwitchQuickMappingClicked():
+    '切換快速聲道映射'
+    global loaded_config,quickMappingSlotIndex
+    loaded_config = config_file()
+    slots = loaded_config.get(QUICK_MAPPING_CONFIG_KEY, [])[:2]
+    if len(slots) < 2:
+        ShortMesg.put(app.translate('', 'Save two mappings first'))
+        return
+    quickMappingSlotIndex = (int(loaded_config.get(QUICK_MAPPING_INDEX_KEY, quickMappingSlotIndex)) + 1) % 2
+    ApplyMappingSnapshot(slots[quickMappingSlotIndex])
+    loaded_config[QUICK_MAPPING_INDEX_KEY] = quickMappingSlotIndex
+    config_file(loaded_config)
+    ShortMesg.put(f'{app.translate("", "Switch")} {quickMappingSlotIndex + 1}/2')
 
 def MappingClicked():
     '開始/停止按鈕'
@@ -594,6 +674,16 @@ class main_window(QtWidgets.QWidget):
         Grid.setContentsMargins(0, 0, 0, 0)
         Grid.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         vbox.addLayout(Grid)
+        # 建立快速聲道映射按鈕
+        quick_map_box = QtWidgets.QHBoxLayout()
+        quick_map_box.setContentsMargins(0, 0, 0, 0)
+        vbox.addLayout(quick_map_box)
+        button_quick_save = QtWidgets.QPushButton('保存')
+        button_quick_save.clicked.connect(SaveQuickMappingClicked)
+        quick_map_box.addWidget(button_quick_save)
+        button_quick_switch = QtWidgets.QPushButton('切換')
+        button_quick_switch.clicked.connect(SwitchQuickMappingClicked)
+        quick_map_box.addWidget(button_quick_switch)
         # 建立水平佈局管理器3
         hbox3 = QtWidgets.QHBoxLayout()
         hbox3.setContentsMargins(0, 0, 0, 0)
