@@ -30,6 +30,7 @@ QUICK_MAPPING_INDEX_KEY = 'quickMappingSlotIndex'
 quickMappingSlotIndex = 0
 CheckBoxs = {}
 VolSlider = {}
+VolLabel = {}
 list_Row = []
 ShortMesg = queue.Queue()
 ##########FUN##########
@@ -76,7 +77,7 @@ def switch_inputDev():
 
 def list_audio_devices():
     """列出音訊裝置"""
-    global inputDev,inputDevID,CheckBoxs,VolSlider,SpinBoxs,outputDevs
+    global inputDev,inputDevID,CheckBoxs,VolSlider,VolLabel,SpinBoxs,outputDevs
     a_shared.AllDevS = {}
     # 輸入裝置
     p = pyaudio.PyAudio()
@@ -128,6 +129,7 @@ def list_audio_devices():
     clear_layout(cbox)
     CheckBoxs = {}
     VolSlider = {}
+    VolLabel = {}
     SpinBoxs = {}
     clear_layout(cbox)
     for i,devName in enumerate(a_shared.AllDevS):
@@ -170,7 +172,15 @@ def list_audio_devices():
         VolSlider[devName].setRange(0,maxVol)
         VolSlider[devName].setValue(round(vol*maxVol))
         VolSlider[devName].valueChanged.connect(partial(GetVolSlider,devName))
-        cbox.addWidget(VolSlider[devName])
+        VolLabel[devName] = QtWidgets.QLabel()
+        VolLabel[devName].setFixedWidth(45)
+        VolLabel[devName].setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        SetVolLabel(devName)
+        hbox_vol = QtWidgets.QHBoxLayout()
+        hbox_vol.setContentsMargins(0, 0, 0, 0)
+        hbox_vol.addWidget(VolLabel[devName])
+        hbox_vol.addWidget(VolSlider[devName])
+        cbox.addLayout(hbox_vol)
     # 自動勾選裝置
     if 'devList' in a_shared.Config:
         for devName in a_shared.Config['devList']:
@@ -248,11 +258,21 @@ def SetVolSlider(devName,vol):
     VolSlider[devName].blockSignals(True)
     VolSlider[devName].setValue(round(vol*maxVol))
     VolSlider[devName].blockSignals(False)
+    SetVolLabel(devName)
+
+def SetVolLabel(devName):
+    '設定音量數值標籤'
+    if devName not in VolLabel:
+        return
+    maxVol = a_shared.AllDevS[devName]['maxVol']
+    vol = round(VolSlider[devName].value()/maxVol*100)
+    VolLabel[devName].setText(f'{vol}%')
 
 def GetVolSlider(devName):
     '音量滑條變動'
     maxVol = a_shared.AllDevS[devName]['maxVol']
     vol = VolSlider[devName].value()/maxVol
+    SetVolLabel(devName)
     a_volume.setDevVol(devName,vol)
     a_shared.VolChanger = devName
 
