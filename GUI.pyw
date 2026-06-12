@@ -174,6 +174,7 @@ def list_audio_devices():
         VolSlider[devName].valueChanged.connect(partial(GetVolSlider,devName))
         VolLabel[devName] = QtWidgets.QLabel()
         VolLabel[devName].setFixedWidth(45)
+        VolLabel[devName].setStyleSheet('font-size: 10px;')
         VolLabel[devName].setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
         SetVolLabel(devName)
         hbox_vol = QtWidgets.QHBoxLayout()
