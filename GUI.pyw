@@ -402,11 +402,10 @@ def update_preset_highlight():
     '更新方案按鈕高亮'
     for i, btn in enumerate(presetButtons):
         if i == presetIndex:
-            btn.setStyleSheet('font-weight: bold; background-color: #4a90d9; color: white;')
+            btn.setStyleSheet('color: yellow;')
+            btn.clearFocus()
         else:
             btn.setStyleSheet('')
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
 
 def MappingClicked():
     '開始/停止按鈕'
@@ -731,7 +730,6 @@ class main_window(QtWidgets.QWidget):
         presetNums = ['1', '2', '3']
         for i in range(3):
             btn = QtWidgets.QPushButton(presetNums[i])
-            btn.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
             btn.clicked.connect(partial(SelectPresetClicked, i))
             Grid_btn.addWidget(btn, 2, i)
             presetButtons.append(btn)
