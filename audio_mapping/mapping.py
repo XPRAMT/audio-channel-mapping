@@ -3,6 +3,7 @@ import numpy as np
 import queue
 import threading
 from . import shared
+from . import chromecast
 import time
 #from scipy.signal import butter, sosfilt
 #from . import openrgb
@@ -87,6 +88,18 @@ class Mapping():
 
                             outdata_bytes = self.OutputProcesse(devName,Queue.get(),self.CHUNK,CH_num).tobytes()
                             shared.to_server.put([IP,False,outdata_bytes])
+                    elif Dev.get('type') == 'chromecast':
+                        CH_num = Dev['maxOutputChannels']
+                        CHUNKFix = Dev.get('chunkFix', self.CHUNK)
+                        delay = round(shared.Config[devName]['delay']/self.Frametime)
+                        Qsize = Queue.qsize()
+                        Dev['qsize'] = Qsize
+                        if Qsize > delay:
+                            if Qsize > delay+1:
+                                while Queue.qsize() > delay+1:
+                                    Queue.get_nowait()
+                            outdata_bytes = self.OutputProcesse(devName,Queue.get(),CHUNKFix,CH_num).tobytes()
+                            shared.to_chromecast.put(['audio', devName, outdata_bytes])
             #if openrgb.Start:
             #    openrgb.RGBQueue.put(indata)
                         
@@ -155,20 +168,30 @@ class Mapping():
             if RateScale not in {1,2}:
                 Resample = True
             if not self.outputDevs[devName]['IP']: #本機裝置
-                try:
-                    po = pyaudio.PyAudio()
-                    stream = po.open(
-                        format=self.pya_type,
-                        channels=chNum,
-                        rate=OutputRate,
-                        output=True,
-                        output_device_index=self.outputDevs[devName]['index'],
-                        frames_per_buffer=CHUNKFix,
-                        stream_callback=self.callback_output(devName,writeQueue,chNum,CHUNKFix))
-                    self.outputDevs[devName]['pyaudio']=po
-                    self.outputDevs[devName]['stream']=stream
-                except Exception as error:
-                    print(f'start {devName} error:{error}')
+                if self.outputDevs[devName].get('type') == 'chromecast':
+                    OutputRate = chromecast.choose_sample_rate(InputRate)
+                    RateScale = OutputRate/InputRate
+                    CHUNKFix = round(self.CHUNK*RateScale)
+                    if RateScale not in {1,2}:
+                        Resample = True
+                    self.outputDevs[devName]['defaultSampleRate'] = OutputRate
+                    self.outputDevs[devName]['chunkFix'] = CHUNKFix
+                    shared.to_chromecast.put(['start', devName, OutputRate])
+                else:
+                    try:
+                        po = pyaudio.PyAudio()
+                        stream = po.open(
+                            format=self.pya_type,
+                            channels=chNum,
+                            rate=OutputRate,
+                            output=True,
+                            output_device_index=self.outputDevs[devName]['index'],
+                            frames_per_buffer=CHUNKFix,
+                            stream_callback=self.callback_output(devName,writeQueue,chNum,CHUNKFix))
+                        self.outputDevs[devName]['pyaudio']=po
+                        self.outputDevs[devName]['stream']=stream
+                    except Exception as error:
+                        print(f'start {devName} error:{error}')
             self.outputDevs[devName]['queue']=writeQueue
         # 初始化輸入流
         pIn = pyaudio.PyAudio()
@@ -209,7 +232,9 @@ class Mapping():
         for devName,Dev in self.outputDevs.items():
             if Dev['switch']:
                 Dev['queue'].put(np.zeros((self.CHUNK,InputChannel),dtype=self.np_type))
-                if not Dev['IP']: #本機裝置
+                if Dev.get('type') == 'chromecast':
+                    shared.to_chromecast.put(['stop', devName])
+                elif not Dev['IP']: #本機裝置
                     Dev['stream'].stop_stream()
                     Dev['stream'].close()
                     Dev['pyaudio'].terminate()

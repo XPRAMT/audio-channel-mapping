@@ -8,3 +8,4 @@ requests
 keyboard
 winsdk
 pyinstaller
+pychromecast

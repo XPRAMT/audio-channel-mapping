@@ -3,6 +3,7 @@ import json
 ###########Queue###########
 to_GUI = queue.Queue()
 to_server = queue.Queue()
+to_chromecast = queue.Queue()
 to_volume = queue.Queue()
 to_mapping = queue.Queue()
 ###########Arg#############

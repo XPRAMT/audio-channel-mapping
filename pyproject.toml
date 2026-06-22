@@ -35,6 +35,7 @@ dependencies = [
     "requests",
     "keyboard",
     "winsdk",
+    "pychromecast",
 ]
 
 # 將 pyinstaller 這種開發/建構工具放在可選依賴中是一個好習慣

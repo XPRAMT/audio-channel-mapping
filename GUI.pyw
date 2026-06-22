@@ -10,6 +10,7 @@ from audio_mapping import shared
 from audio_mapping import mapping
 from audio_mapping import volume
 from audio_mapping import server
+from audio_mapping import chromecast
 #from audio_mapping import openrgb
 from audio_mapping import smtc
 
@@ -109,12 +110,18 @@ def list_audio_devices():
     # 網路輸出裝置
     for client_IP in shared.clients:
         dev = shared.clients.get(client_IP)
+        if dev is None:
+            continue
         MAC = dev['MAC']
         netdevice = {
             'maxOutputChannels': 2,'switch': False ,'name':dev['name'],
-            'IP':client_IP,'MAC':MAC,'defaultSampleRate':inputDev['defaultSampleRate'],
-            'volume':dev['volume'],'maxVol':dev['maxVol'],'chList':['FL','FR']
+            'IP':client_IP,'MAC':MAC,'defaultSampleRate':dev.get('defaultSampleRate', inputDev['defaultSampleRate']),
+            'volume':dev['volume'],'maxVol':dev['maxVol'],'chList':dev.get('chList', ['FL','FR'])
         }
+        if dev.get('type') == 'chromecast':
+            netdevice['type'] = 'chromecast'
+            netdevice['IP'] = None
+            netdevice['chromecastID'] = MAC
         outputDevs[MAC] = netdevice
     # 依照名稱排序輸出裝置
     outputDevs = {k: outputDevs[k] for k in sorted(outputDevs)}
@@ -617,6 +624,7 @@ class main_window(QtWidgets.QWidget):
         # 啟動線程
         threading.Thread(target=volume.volSyncMain,daemon = True).start()  #音量同步
         threading.Thread(target=server.start_server,daemon = True).start() #server
+        threading.Thread(target=chromecast.start_chromecast,daemon = True).start() #Chromecast
         #threading.Thread(target=openrgb.OpenRGB,daemon=True).start()      #OpenRGB
         threading.Thread(target=printShortMesg,daemon = True).start()        #ShortMesg
         # 掃描裝置
