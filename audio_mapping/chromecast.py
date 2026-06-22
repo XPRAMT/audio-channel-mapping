@@ -249,6 +249,8 @@ class ChromecastStream:
         self.started = False
         self.play_thread = None
         self.logged_first_audio = False
+        self._audio_active = False
+        self._silence_thread = None
 
     def start(self):
         if self.started:
@@ -260,18 +262,20 @@ class ChromecastStream:
         self.header_sent = False
         self.logged_first_audio = False
         self.broadcaster.clear_audio_backlog()
-        # Feed WAV header + silence immediately so HTTP clients get data instantly
-        silence_seconds = 2
-        silence_frames = int(self.sample_rate * silence_seconds)
+        # Feed WAV header + brief silence so HTTP client starts streaming immediately
+        silence_frames = int(self.sample_rate * 0.1)  # 100ms
         header = make_wav_header(self.sample_rate)
         silence_data = b"\x00" * (silence_frames * 2 * CHROMECAST_BYTE_PER_SAMPLE)
         self.broadcaster.set_header(header)
         self.broadcaster.publish(header + silence_data)
         self.header_sent = True
+        self._audio_active = False
         self.started = True
         log(f"stream ready {self.cast_info.friendly_name} {self.sample_rate}Hz")
         self.play_thread = threading.Thread(target=self._connect_and_play, daemon=True)
         self.play_thread.start()
+        self._silence_thread = threading.Thread(target=self._silence_filler, daemon=True)
+        self._silence_thread.start()
 
     def _connect_and_play(self):
         try:
@@ -304,20 +308,34 @@ class ChromecastStream:
             log(f"volume error: {error}")
 
     def publish_audio(self, data):
+        if not self._audio_active:
+            self._audio_active = True
+            log(f"audio active, silence filler stopped")
         if not self.logged_first_audio:
             self.logged_first_audio = True
             log(f"first mapped audio {len(data)} bytes")
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm24(data))
 
+    def _silence_frame(self):
+        frames = int(self.sample_rate * 0.1)
+        return b"\x00" * (frames * 2 * CHROMECAST_BYTE_PER_SAMPLE)
+
+    def _silence_filler(self):
+        silence = self._silence_frame()
+        while self.started and not self._audio_active:
+            self.broadcaster.publish(silence)
+            time.sleep(0.1)
+
     def stop(self):
+        self._audio_active = False
+        self.started = False
         try:
             if self.cast:
                 self.cast.media_controller.stop()
         except Exception as error:
             log(f"stop error: {error}")
         self.broadcaster.close()
-        self.started = False
         self.header_sent = False
 
 
