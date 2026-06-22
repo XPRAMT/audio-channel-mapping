@@ -885,20 +885,20 @@ class main_window(QtWidgets.QWidget):
         self.CheckUpdateBox.setText(app.translate('', "Check update at start"))
         if loaded_config.get('checkUpdataBox',False):
             self.CheckUpdateBox.setChecked(True)
-        def toggleminimizeAtStart():
+        def toggleCheckUpdate():
             loaded_config['checkUpdataBox'] = self.CheckUpdateBox.isChecked()
             config_file(loaded_config)
-        self.CheckUpdateBox.clicked.connect(toggleminimizeAtStart)
+        self.CheckUpdateBox.clicked.connect(toggleCheckUpdate)
         settings_layout.addWidget(self.CheckUpdateBox)
         # 啟動時最小化
         self.MinimizeAtStartBox = QtWidgets.QCheckBox()
         self.MinimizeAtStartBox.setText(app.translate('', "Minimize at start"))
         if loaded_config.get('minimizeAtStart',False):
             self.MinimizeAtStartBox.setChecked(True)
-        def toggleminimizeAtStart():
+        def toggleMinimizeAtStart():
             loaded_config['minimizeAtStart'] = self.MinimizeAtStartBox.isChecked()
             config_file(loaded_config)
-        self.MinimizeAtStartBox.clicked.connect(toggleminimizeAtStart)
+        self.MinimizeAtStartBox.clicked.connect(toggleMinimizeAtStart)
         settings_layout.addWidget(self.MinimizeAtStartBox)
         # Minimize to system tray on close
         self.KeepTrayBox = QtWidgets.QCheckBox()
@@ -927,8 +927,6 @@ class main_window(QtWidgets.QWidget):
         self.lang_label = QtWidgets.QLabel(app.translate('', "Language"))
         self.lang_combo = QtWidgets.QComboBox()
         available_langs = scan_language_qm()
-        system_locale = get_display_language()
-        sys_name = LANG_NAMES.get(system_locale, system_locale)
         # 第一項：系統預設
         self.lang_combo.addItem(f'{app.translate("", "System Default")}', '')
         # 第二項：English（原始語言，不載入 .qm）
@@ -956,17 +954,17 @@ class main_window(QtWidgets.QWidget):
         # 網路 Port 設定
         port_layout = QtWidgets.QHBoxLayout()
         self.port_label = QtWidgets.QLabel(app.translate('', "Network port"))
-        port_spin = QtWidgets.QSpinBox()
-        port_spin.setRange(1024, 65535)
-        port_spin.setValue(loaded_config.get('port', 25505))
+        self.port_spin = QtWidgets.QSpinBox()
+        self.port_spin.setRange(1024, 65535)
+        self.port_spin.setValue(loaded_config.get('port', 25505))
         def changePort():
-            loaded_config['port'] = port_spin.value()
+            loaded_config['port'] = self.port_spin.value()
             config_file(loaded_config)
             shared.Config['port'] = loaded_config['port']
             ShortMesg.put(app.translate('', "Port saved, restart app to apply"))
-        port_spin.valueChanged.connect(changePort)
+        self.port_spin.valueChanged.connect(changePort)
         port_layout.addWidget(self.port_label)
-        port_layout.addWidget(port_spin)
+        port_layout.addWidget(self.port_spin)
         settings_layout.addLayout(port_layout)
 
         
