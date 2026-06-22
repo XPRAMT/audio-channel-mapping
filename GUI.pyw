@@ -402,10 +402,12 @@ def update_preset_highlight():
     '更新方案按鈕高亮'
     for i, btn in enumerate(presetButtons):
         if i == presetIndex:
-            btn.setStyleSheet('color: yellow;')
+            palette = btn.palette()
+            palette.setColor(QtGui.QPalette.ColorRole.ButtonText, QtCore.Qt.GlobalColor.yellow)
+            btn.setPalette(palette)
             btn.clearFocus()
         else:
-            btn.setStyleSheet('')
+            btn.setPalette(QtGui.QPalette())
 
 def MappingClicked():
     '開始/停止按鈕'
