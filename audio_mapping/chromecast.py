@@ -299,9 +299,9 @@ class ChromecastStream:
                     try:
                         gap = time.time() - self._last_audio_time
                         if gap > 5:
-                            silence_frame = b"\x00" * (self.sample_rate // 10 * 2 * CHROMECAST_BYTE_PER_SAMPLE)  # 100ms silence
-                            self.broadcaster.publish(silence_frame)
-                            log(f"silence sent gap={gap:.1f}s")
+                            for _ in range(100):
+                                self.broadcaster.publish(b"\x00" * 5760)
+                            log(f"silence 100 packets sent gap={gap:.1f}s")
                         self.cast.media_controller.play()
                     except Exception:
                         pass
