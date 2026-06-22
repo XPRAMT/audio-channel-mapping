@@ -17,7 +17,7 @@ CONTENT_TYPE = "audio/wav"
 CHROMECAST_BYTE_PER_SAMPLE = 3
 SUPPORTED_SAMPLE_RATES = (44100, 48000, 88200, 96000)
 CAST_WAIT_TIMEOUT = 1.5
-DISCOVERY_INTERVAL = 30
+DISCOVERY_INTERVAL = 5
 VOLUME_SYNC_INTERVAL = 0.5
 VOLUME_EPSILON = 0.005
 VOLUME_SET_SUPPRESS_SECONDS = 1.5
@@ -376,13 +376,14 @@ def update_discovered_devices(devices):
                 changed = True
     if changed:
         shared.to_GUI.put([3, "Rescan"])
+    return changed
 
 
 def discover_once(timeout=5):
     devices, browser = pychromecast.discovery.discover_chromecasts(timeout=timeout)
     try:
-        update_discovered_devices(devices)
-        print(f"[Chromecast] found {len(devices)} device(s)")
+        if update_discovered_devices(devices):
+            print(f"[Chromecast] found {len(devices)} device(s)")
     finally:
         browser.stop_discovery()
         get_zconf()
