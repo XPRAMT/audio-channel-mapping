@@ -164,8 +164,8 @@ def float32_to_pcm24(data):
     samples = np.nan_to_num(samples, nan=0.0, posinf=1.0, neginf=-1.0)
     samples = np.clip(samples, -1.0, 1.0)
     int_samples = (samples * 8388607).astype("<i4")
-    bytes4 = int_samples.tobytes()
-    return b"".join(bytes4[index:index + 3] for index in range(0, len(bytes4), 4))
+    view = int_samples.view(np.uint8).reshape(-1, 4)
+    return view[:, :3].tobytes()
 
 
 class PcmBroadcaster:
@@ -447,17 +447,6 @@ def update_discovered_devices(devices):
     if changed:
         shared.to_GUI.put([3, "Rescan"])
     return changed
-
-
-def remove_chromecast(dev_id):
-    """Remove a chromecast device from shared state and clean up."""
-    stream = _streams.pop(dev_id, None)
-    if stream:
-        stream.stop()
-    shared.clients.pop(dev_id, None)
-    _cast_infos.pop(dev_id, None)
-    _discovery_misses.pop(dev_id, None)
-    shared.to_GUI.put([3, "Rescan"])
 
 
 def discover_once(timeout=5):
