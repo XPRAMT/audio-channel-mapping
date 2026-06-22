@@ -919,11 +919,15 @@ class main_window(QtWidgets.QWidget):
 
     def center(self):
         '視窗置中'
-        # 取得螢幕的幾何訊息
-        screenGeometry = QtWidgets.QApplication.primaryScreen().geometry()
+        screen = QtGui.QGuiApplication.screenAt(QtGui.QCursor.pos())
+        if screen is None:
+            screen = QtWidgets.QApplication.primaryScreen()
+        if screen is None:
+            return
+        screenGeometry = screen.geometry()
         # 計算視窗左上角的座標，使其位於螢幕中心
-        x = (screenGeometry.width() - self.width()) // 2
-        y = (screenGeometry.height() - self.height()) // 2
+        x = screenGeometry.x() + (screenGeometry.width() - self.width()) // 2
+        y = screenGeometry.y() + (screenGeometry.height() - self.height()) // 2
         # 設定視窗的位置
         self.setGeometry(x, y, self.width(), self.height())
 
