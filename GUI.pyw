@@ -15,6 +15,7 @@ from audio_mapping import chromecast
 from audio_mapping import smtc
 
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
+os.environ["QT_LOGGING_RULES"] = "qt.qpa.fonts.warning=false"
 ##########FUN##########
 def asset_path(relative_path):
     "回傳資產路徑，支援開發/PyInstaller 打包模式"
