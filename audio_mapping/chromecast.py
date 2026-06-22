@@ -333,7 +333,7 @@ class ChromecastStream:
             log(f"first mapped audio {len(pcm_data)} bytes")
         self.broadcaster.publish(pcm_data)
         if self._pending_play:
-            if self.cast:
+            if self.cast and self.cast.media_controller.is_active:
                 self._pending_play = False
                 self.cast.media_controller.play()
                 log(f"play sent")
