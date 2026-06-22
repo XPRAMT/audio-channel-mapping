@@ -174,7 +174,7 @@ def list_audio_devices():
         VolSlider[devName].valueChanged.connect(partial(GetVolSlider,devName))
         VolLabel[devName] = QtWidgets.QLabel()
         volLabelFont = VolLabel[devName].font()
-        volLabelFont.setPixelSize(5)
+        volLabelFont.setPixelSize(10)
         VolLabel[devName].setFont(volLabelFont)
         VolLabel[devName].setFixedHeight(VolLabel[devName].fontMetrics().height())
         VolLabel[devName].setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed,

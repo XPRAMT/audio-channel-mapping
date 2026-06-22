@@ -2,3 +2,4 @@
 echo launche venv
 pip list
 pyinstaller GUI.spec
+PAUSE
