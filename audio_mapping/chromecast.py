@@ -351,6 +351,8 @@ class ChromecastStream:
                     url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
                     self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
                     log(f"play_media sent (resume reload)")
+                    self.cast.media_controller.block_until_active(timeout=3)
+                    log(f"media active (resume)")
                 self.cast.media_controller.play()
                 log(f"media play sent (resume)")
             except Exception as error:
