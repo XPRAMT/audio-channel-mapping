@@ -250,7 +250,6 @@ class ChromecastStream:
         self.started = False
         self.play_thread = None
         self.logged_first_audio = False
-        self._last_session_check = 0
 
     def start(self):
         if self.started:
@@ -278,23 +277,8 @@ class ChromecastStream:
             cast.wait(timeout=CAST_WAIT_TIMEOUT)
             log(f"cast wait done {self.cast_info.friendly_name}")
             self.cast = cast
-            local_ip = local_ip_for_target(self.cast_info.host)
-            port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
-            url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
-            media = cast.media_controller
-            media.play_media(
-                url,
-                CONTENT_TYPE,
-                title="Audio Mapping",
-                stream_type="LIVE",
-                autoplay=True,
-            )
-            log(f"play_media sent {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
-            media.block_until_active(timeout=3)
-            media.play()
-            log(f"media play sent")
         except Exception as error:
-            log(f"connect/play error: {error}")
+            log(f"connect error: {error}")
 
     def set_volume(self, volume):
         if not self.cast:
@@ -304,27 +288,38 @@ class ChromecastStream:
         except Exception as error:
             log(f"volume error: {error}")
 
+    def _ensure_session(self):
+        """If session is IDLE or unconnected, send play_media and play."""
+        if not self.cast:
+            return
+        try:
+            state = self.cast.media_controller.status.player_state
+            if state != "IDLE":
+                if state == "PLAYING":
+                    return
+                if state in ("PAUSED", "BUFFERING"):
+                    self.cast.media_controller.play()
+                    return
+        except Exception:
+            pass
+        # IDLE or error → reload
+        log(f"starting/reloading chromecast session")
+        try:
+            local_ip = local_ip_for_target(self.cast_info.host)
+            port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+            url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
+            self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
+            self.cast.media_controller.block_until_active(timeout=3)
+            self.cast.media_controller.play()
+            log(f"session started/reloaded")
+        except Exception as error:
+            log(f"session start error: {error}")
+
     def publish_audio(self, data):
         if not self.logged_first_audio:
             self.logged_first_audio = True
             log(f"first mapped audio {len(data)} bytes")
-        # 檢查 Chromecast session 是否 IDLE，若是則重新 play_media
-        now = time.time()
-        if now - self._last_session_check > 2 and self.cast:
-            self._last_session_check = now
-            try:
-                state = self.cast.media_controller.status.player_state
-                if state == "IDLE":
-                    log(f"session idle on publish, reloading")
-                    local_ip = local_ip_for_target(self.cast_info.host)
-                    port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
-                    url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
-                    self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
-                    self.cast.media_controller.block_until_active(timeout=3)
-                    self.cast.media_controller.play()
-                    log(f"session reloaded on publish")
-            except Exception:
-                pass
+        self._ensure_session()
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm24(data))
 
@@ -353,28 +348,6 @@ class ChromecastStream:
         self.header_sent = True
         self.started = True
         log(f"stream resumed {self.cast_info.friendly_name}")
-        if self.cast:
-            try:
-                # 檢查 session 是否還在，若已 IDLE 需重新 play_media
-                need_reload = True
-                try:
-                    state = self.cast.media_controller.status.player_state
-                    if state == "PAUSED":
-                        need_reload = False
-                except Exception:
-                    pass
-                if need_reload:
-                    local_ip = local_ip_for_target(self.cast_info.host)
-                    port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
-                    url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
-                    self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
-                    log(f"play_media sent (resume reload)")
-                    self.cast.media_controller.block_until_active(timeout=3)
-                    log(f"media active (resume)")
-                self.cast.media_controller.play()
-                log(f"media play sent (resume)")
-            except Exception as error:
-                log(f"resume play error: {error}")
 
 
 def ensure_http_server():
