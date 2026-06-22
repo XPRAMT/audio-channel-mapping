@@ -324,6 +324,8 @@ class ChromecastStream:
 
     def publish_audio(self, data):
         self._last_audio_time = time.time()
+        self.broadcaster.clear_audio_backlog()
+        self.broadcaster.publish(float32_to_pcm24(data))
         if self._pending_play:
             if self.cast:
                 self._pending_play = False
@@ -332,8 +334,6 @@ class ChromecastStream:
             else:
                 shared.to_chromecast.put(["play", self.dev_id])
                 log(f"play queued")
-        self.broadcaster.clear_audio_backlog()
-        self.broadcaster.publish(float32_to_pcm24(data))
 
     def stop(self):
         self.started = False
