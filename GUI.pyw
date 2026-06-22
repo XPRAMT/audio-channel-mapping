@@ -387,22 +387,23 @@ def SelectPresetClicked(index):
     loaded_config = config_file()
     presetData = loaded_config.setdefault(PRESET_DATA_KEY, {})
     comboSlots = presetData.get(coName, [None, None, None])
-    if index < len(comboSlots) and comboSlots[index] is not None:
-        presetIndex = index
-        ApplyMappingSnapshot(comboSlots[index])
-    else:
-        ShortMesg.put(app.translate('', 'Empty preset slot'))
-        return
+    while len(comboSlots) < 3:
+        comboSlots.append(None)
+    presetIndex = index
+    presetData[coName] = comboSlots
     loaded_config[PRESET_INDEX_KEY] = presetIndex
     config_file(loaded_config)
     update_preset_highlight()
+    if comboSlots[index] is not None:
+        ApplyMappingSnapshot(comboSlots[index])
     ShortMesg.put(f'{app.translate("", "Preset")} {index + 1}/3')
 
 def update_preset_highlight():
     '更新方案按鈕高亮'
     for i, btn in enumerate(presetButtons):
         if i == presetIndex:
-            btn.setStyleSheet('font-weight: bold; background-color: #4a90d9; color: white;')
+            #btn.setStyleSheet('font-weight: bold; background-color: #4a90d9; color: white;')
+            pass
         else:
             btn.setStyleSheet('')
 
