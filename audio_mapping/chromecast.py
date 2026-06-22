@@ -41,6 +41,22 @@ def stream_path(dev_id):
     return f"{STREAM_PATH_PREFIX}/{dev_id}.wav"
 
 
+def read_device_volume(cast_info, fallback=1.0):
+    try:
+        zconf = _browser.zc if _browser else None
+        cast = pychromecast.Chromecast(cast_info, zconf=zconf)
+        cast.wait(timeout=5)
+        status = cast.status
+        volume = getattr(status, "volume_level", None)
+        cast.disconnect()
+        if volume is None:
+            return fallback
+        return max(0.0, min(1.0, float(volume)))
+    except Exception as error:
+        print(f"[Chromecast] read volume error: {error}")
+        return fallback
+
+
 def make_wav_header(sample_rate, channels=2, byte_per_sample=2):
     data_size = 0xFFFFFFFF
     block_align = channels * byte_per_sample
@@ -237,6 +253,8 @@ def update_discovered_devices(devices):
         dev_id = f"chromecast:{device.uuid}"
         current_ids.add(dev_id)
         _cast_infos[dev_id] = device
+        old_client = shared.clients.get(dev_id, {})
+        volume = read_device_volume(device, old_client.get("volume", 1.0))
         client = {
             "type": "chromecast",
             "MAC": dev_id,
@@ -244,7 +262,7 @@ def update_discovered_devices(devices):
             "host": device.host,
             "port": device.port,
             "uuid": str(device.uuid),
-            "volume": 1.0,
+            "volume": volume,
             "maxVol": 100,
             "chList": ["FL", "FR"],
         }
@@ -302,9 +320,6 @@ def sender_loop():
                 _streams[dev_id] = stream
             try:
                 stream.start()
-                client = shared.clients.get(dev_id)
-                if client:
-                    stream.set_volume(client.get("volume", 1.0))
             except Exception as error:
                 print(f"[Chromecast] start error: {error}")
         elif action == "audio":
