@@ -345,7 +345,7 @@ def update_discovered_devices(devices):
         _discovery_misses.pop(dev_id, None)
         _cast_infos[dev_id] = device
         old_client = shared.clients.get(dev_id, {})
-        volume = old_client.get("volume", 1.0)
+        volume = read_device_volume(device, old_client.get("volume", 1.0))
         client_info = {
             "type": "chromecast",
             "MAC": dev_id,
@@ -364,6 +364,7 @@ def update_discovered_devices(devices):
                 if old_client.get(key) != value:
                     old_client[key] = value
                     changed = True
+            update_client_volume(dev_id, volume)
     for dev_id, client in list(shared.clients.items()):
         if client.get("type") == "chromecast" and dev_id not in current_ids:
             misses = _discovery_misses.get(dev_id, 0) + 1
@@ -449,6 +450,7 @@ def start_chromecast():
     threading.Thread(target=sender_loop, daemon=True).start()
     threading.Thread(target=discovery_loop, daemon=True).start()
     threading.Thread(target=volume_sender_loop, daemon=True).start()
+    threading.Thread(target=volume_sync_loop, daemon=True).start()
 
 
 def publish_audio(dev_id, data):
