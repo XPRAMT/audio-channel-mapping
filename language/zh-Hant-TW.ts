@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation>切換至方案</translation>
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation>語言已切換</translation>
+    </message>
   </context>
 </TS>

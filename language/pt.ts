@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation>Mudar para predefinição</translation>
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation>Idioma alterado</translation>
+    </message>
   </context>
 </TS>

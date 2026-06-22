@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation>التبديل إلى الإعداد المسبق</translation>
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation>تم تغيير اللغة</translation>
+    </message>
   </context>
 </TS>

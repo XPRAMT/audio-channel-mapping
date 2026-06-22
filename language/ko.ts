@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation>프리셋으로 전환</translation>
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation>언어가 변경되었습니다</translation>
+    </message>
   </context>
 </TS>

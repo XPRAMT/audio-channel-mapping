@@ -628,6 +628,21 @@ translator = translate()
 # 映射
 Mapping = mapping.Mapping()
 
+# 即時切換語言
+def change_language(code):
+    '切換語言並即時更新UI'
+    global translator
+    app.removeTranslator(translator)
+    translator = QtCore.QTranslator()
+    if code != 'en' and translator.load(f'language/{code}.qm'):
+        app.installTranslator(translator)
+    else:
+        translator = QtCore.QTranslator()
+    loaded_config['language'] = code
+    config_file(loaded_config)
+    MainWindow.retranslateUi()
+    ShortMesg.put(app.translate('', 'Language changed'))
+
 # 建立主頁面
 class main_window(QtWidgets.QWidget):
 
@@ -703,37 +718,38 @@ class main_window(QtWidgets.QWidget):
         #Grid_btn.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         vbox.addLayout(Grid_btn)
         # 建立儲存按鈕
-        button_Save = QtWidgets.QPushButton('💾')#app.translate('', "Save"))
-        button_Save.setToolTip(app.translate('', 'Save current mapping to preset'))
-        button_Save.clicked.connect(SaveClicked)
-        Grid_btn.addWidget(button_Save,0,0)
+        button_Save = self.button_Save = QtWidgets.QPushButton('💾')#app.translate('', "Save"))
+        self.button_Save.setToolTip(app.translate('', 'Save current mapping to preset'))
+        self.button_Save.clicked.connect(SaveClicked)
+        Grid_btn.addWidget(self.button_Save,0,0)
         # 建立刪除按鈕
-        button_del = QtWidgets.QPushButton('🗑️')#app.translate('', "Delete"))
-        button_del.setToolTip(app.translate('', 'Clear current preset slot'))
-        button_del.clicked.connect(DelClicked)
-        Grid_btn.addWidget(button_del,0,1)
+        button_del = self.button_del = QtWidgets.QPushButton('🗑️')#app.translate('', "Delete"))
+        self.button_del.setToolTip(app.translate('', 'Clear current preset slot'))
+        self.button_del.clicked.connect(DelClicked)
+        Grid_btn.addWidget(self.button_del,0,1)
         # 建立輸入裝置切換按鈕
-        button_switch = QtWidgets.QPushButton('🎧➞🎙️')#app.translate('', "Switch"))
-        button_switch.setToolTip(app.translate('', 'Toggle input between microphone and speakers (loopback)'))
-        button_switch.clicked.connect(switch_inputDev)
-        Grid_btn.addWidget(button_switch,0,2)
+        button_switch = self.button_switch = QtWidgets.QPushButton('🎧➞🎙️')#app.translate('', "Switch"))
+        self.button_switch.setToolTip(app.translate('', 'Toggle input between microphone and speakers (loopback)'))
+        self.button_switch.clicked.connect(switch_inputDev)
+        Grid_btn.addWidget(self.button_switch,0,2)
         # 建立設定按鈕
-        button_setting = QtWidgets.QPushButton('⚙️')#app.translate('', "Setting"))
-        button_setting.setToolTip(app.translate('', 'Open settings'))
-        button_setting.clicked.connect(lambda: MainWindow.leftStacked.setCurrentWidget(self.settings_page))
-        Grid_btn.addWidget(button_setting,1,0)
+        button_setting = self.button_setting = QtWidgets.QPushButton('⚙️')#app.translate('', "Setting"))
+        self.button_setting.setToolTip(app.translate('', 'Open settings'))
+        self.button_setting.clicked.connect(lambda: MainWindow.leftStacked.setCurrentWidget(self.settings_page))
+        Grid_btn.addWidget(self.button_setting,1,0)
         # 建立Refresh按鈕
-        button_scan = QtWidgets.QPushButton('🔄')#app.translate('', "Refresh"))
-        button_scan.setToolTip(app.translate('', 'Rescan audio devices'))
-        button_scan.clicked.connect(ScanClicked)
-        Grid_btn.addWidget(button_scan,1,1)
+        button_scan = self.button_scan = QtWidgets.QPushButton('🔄')#app.translate('', "Refresh"))
+        self.button_scan.setToolTip(app.translate('', 'Rescan audio devices'))
+        self.button_scan.clicked.connect(ScanClicked)
+        Grid_btn.addWidget(self.button_scan,1,1)
         # 建立映射按鈕
-        button_mapping = QtWidgets.QPushButton('▶️')#app.translate('', "Start"))
-        button_mapping.setToolTip(app.translate('', 'Start/stop audio channel mapping'))
-        button_mapping.clicked.connect(MappingClicked)
-        Grid_btn.addWidget(button_mapping,1,2)
+        button_mapping = self.button_mapping = QtWidgets.QPushButton('▶️')#app.translate('', "Start"))
+        self.button_mapping.setToolTip(app.translate('', 'Start/stop audio channel mapping'))
+        self.button_mapping.clicked.connect(MappingClicked)
+        Grid_btn.addWidget(self.button_mapping,1,2)
         # 建立方案快捷鍵
         presetButtons = []
+        self.presetTooltipButtons = []
         presetNums = ['1', '2', '3']
         for i in range(3):
             btn = QtWidgets.QPushButton(presetNums[i])
@@ -741,6 +757,7 @@ class main_window(QtWidgets.QWidget):
             btn.clicked.connect(partial(SelectPresetClicked, i))
             Grid_btn.addWidget(btn, 2, i)
             presetButtons.append(btn)
+            self.presetTooltipButtons.append(btn)
         update_preset_highlight()
         # 建立一個網格佈局管理器
         Grid = QtWidgets.QGridLayout()
@@ -758,6 +775,33 @@ class main_window(QtWidgets.QWidget):
         mesg_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         hbox3.addWidget(mesg_label)
 
+    def retranslateUi(self):
+        '即時重新翻譯所有UI元素'
+        self.setWindowTitle(app.translate('', 'Audio Mapping') + ' v' + curVersion)
+        # tooltips
+        self.button_Save.setToolTip(app.translate('', 'Save current mapping to preset'))
+        self.button_del.setToolTip(app.translate('', 'Clear current preset slot'))
+        self.button_switch.setToolTip(app.translate('', 'Toggle input between microphone and speakers (loopback)'))
+        self.button_setting.setToolTip(app.translate('', 'Open settings'))
+        self.button_scan.setToolTip(app.translate('', 'Rescan audio devices'))
+        self.button_mapping.setToolTip(app.translate('', 'Start/stop audio channel mapping'))
+        for i, btn in enumerate(self.presetTooltipButtons):
+            btn.setToolTip(f'{app.translate("", "Switch to preset")} {i+1}')
+        # 設定頁
+        if hasattr(self, 'shortNameBox'):
+            self.shortNameBox.setText(app.translate('', 'Use short name'))
+            self.MediaKeyBox.setText(app.translate('', 'Use media controler'))
+            self.StartLoginBox.setText(app.translate('', 'Start at Login'))
+            self.CheckUpdateBox.setText(app.translate('', 'Check update at start'))
+            self.MinimizeAtStartBox.setText(app.translate('', 'Minimize at start'))
+            self.KeepTrayBox.setText(app.translate('', 'Minimize to system tray on close'))
+            self.OpenRGBBox.setText(app.translate('', 'Use OpenRGB'))
+            self.lang_label.setText(app.translate('', 'Language'))
+            self.lang_combo.setItemText(0, app.translate('', 'System Default'))
+            self.port_label.setText(app.translate('', 'Network port'))
+            self.update_button.setText(app.translate('', 'Check for Updates'))
+            self.back_button.setText(app.translate('', 'Back'))
+
     def init_SettingsPage(self):
         'Setting UI'
         # 初始化
@@ -774,35 +818,35 @@ class main_window(QtWidgets.QWidget):
         github_button.clicked.connect(lambda: QtGui.QDesktopServices.openUrl(QtCore.QUrl("https://github.com/XPRAMT/audio-channel-mapping")))
         settings_layout.addWidget(github_button)
         # 短名稱
-        shortNameBox = QtWidgets.QCheckBox()
-        shortNameBox.setText(app.translate('', "Use short name"))
+        self.shortNameBox = QtWidgets.QCheckBox()
+        self.shortNameBox.setText(app.translate('', "Use short name"))
         if loaded_config.get('shortName',False):
-            shortNameBox.setChecked(True)
+            self.shortNameBox.setChecked(True)
         def toggleShortName():
-            loaded_config['shortName'] = shortNameBox.isChecked()
+            loaded_config['shortName'] = self.shortNameBox.isChecked()
             config_file(loaded_config)
             ScanClicked()
-        shortNameBox.clicked.connect(toggleShortName)
-        settings_layout.addWidget(shortNameBox)
+        self.shortNameBox.clicked.connect(toggleShortName)
+        settings_layout.addWidget(self.shortNameBox)
         
         # media key
-        MediaKeyBox = QtWidgets.QCheckBox()
-        MediaKeyBox.setText(app.translate('', "Use media controler"))
+        self.MediaKeyBox = QtWidgets.QCheckBox()
+        self.MediaKeyBox.setText(app.translate('', "Use media controler"))
         if loaded_config.get('mediaKey',False):
-            MediaKeyBox.setChecked(True)
+            self.MediaKeyBox.setChecked(True)
         def toggleMediaKey():
-            btn_switch = MediaKeyBox.isChecked()
+            btn_switch = self.MediaKeyBox.isChecked()
             loaded_config['mediaKey'] = btn_switch
             config_file(loaded_config)
             MainWindow.SMTC.setVisible(btn_switch)
-        MediaKeyBox.clicked.connect(toggleMediaKey)
-        settings_layout.addWidget(MediaKeyBox)
+        self.MediaKeyBox.clicked.connect(toggleMediaKey)
+        settings_layout.addWidget(self.MediaKeyBox)
 
         
 
         # 開機自啟動
-        StartLoginBox = QtWidgets.QCheckBox()
-        StartLoginBox.setText(app.translate('', "Start at Login"))
+        self.StartLoginBox = QtWidgets.QCheckBox()
+        self.StartLoginBox.setText(app.translate('', "Start at Login"))
         # 取得目前程式的完整路徑
         def get_registry_value():
             """讀取登錄檔中開機自啟動的值，若不存在則回傳 None"""
@@ -816,13 +860,13 @@ class main_window(QtWidgets.QWidget):
             except Exception as e:
                 return False
         app_path = os.path.realpath(sys.argv[0])
-        StartLoginBox.setChecked(get_registry_value())
+        self.StartLoginBox.setChecked(get_registry_value())
         def toggleStartAtLogin():
             try:
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                                     r"Software\Microsoft\Windows\CurrentVersion\Run",
                                     0, winreg.KEY_ALL_ACCESS)
-                if StartLoginBox.isChecked():# 將程式加入開機自啟動
+                if self.StartLoginBox.isChecked():# 將程式加入開機自啟動
                     winreg.SetValueEx(key, appName, 0, winreg.REG_SZ, app_path)
                     print('設定開機自啟動')
                 else:
@@ -834,86 +878,84 @@ class main_window(QtWidgets.QWidget):
                 winreg.CloseKey(key)
             except Exception as e:
                 print("設定開機自啟動失敗：", e)
-        StartLoginBox.clicked.connect(toggleStartAtLogin)
-        settings_layout.addWidget(StartLoginBox)
+        self.StartLoginBox.clicked.connect(toggleStartAtLogin)
+        settings_layout.addWidget(self.StartLoginBox)
         # 啟動時檢查更新
-        CheckUpdateBox = QtWidgets.QCheckBox()
-        CheckUpdateBox.setText(app.translate('', "Check update at start"))
+        self.CheckUpdateBox = QtWidgets.QCheckBox()
+        self.CheckUpdateBox.setText(app.translate('', "Check update at start"))
         if loaded_config.get('checkUpdataBox',False):
-            CheckUpdateBox.setChecked(True)
+            self.CheckUpdateBox.setChecked(True)
         def toggleminimizeAtStart():
-            loaded_config['checkUpdataBox'] = CheckUpdateBox.isChecked()
+            loaded_config['checkUpdataBox'] = self.CheckUpdateBox.isChecked()
             config_file(loaded_config)
-        CheckUpdateBox.clicked.connect(toggleminimizeAtStart)
-        settings_layout.addWidget(CheckUpdateBox)
+        self.CheckUpdateBox.clicked.connect(toggleminimizeAtStart)
+        settings_layout.addWidget(self.CheckUpdateBox)
         # 啟動時最小化
-        MinimizeAtStartBox = QtWidgets.QCheckBox()
-        MinimizeAtStartBox.setText(app.translate('', "Minimize at start"))
+        self.MinimizeAtStartBox = QtWidgets.QCheckBox()
+        self.MinimizeAtStartBox.setText(app.translate('', "Minimize at start"))
         if loaded_config.get('minimizeAtStart',False):
-            MinimizeAtStartBox.setChecked(True)
+            self.MinimizeAtStartBox.setChecked(True)
         def toggleminimizeAtStart():
-            loaded_config['minimizeAtStart'] = MinimizeAtStartBox.isChecked()
+            loaded_config['minimizeAtStart'] = self.MinimizeAtStartBox.isChecked()
             config_file(loaded_config)
-        MinimizeAtStartBox.clicked.connect(toggleminimizeAtStart)
-        settings_layout.addWidget(MinimizeAtStartBox)
+        self.MinimizeAtStartBox.clicked.connect(toggleminimizeAtStart)
+        settings_layout.addWidget(self.MinimizeAtStartBox)
         # Minimize to system tray on close
-        KeepTrayBox = QtWidgets.QCheckBox()
-        KeepTrayBox.setText(app.translate('', "Minimize to system tray on close"))
+        self.KeepTrayBox = QtWidgets.QCheckBox()
+        self.KeepTrayBox.setText(app.translate('', "Minimize to system tray on close"))
         if loaded_config.get('keepTray',False):
-            KeepTrayBox.setChecked(True)
+            self.KeepTrayBox.setChecked(True)
         def toggleKeepTray():
-            loaded_config['keepTray'] = KeepTrayBox.isChecked()
+            loaded_config['keepTray'] = self.KeepTrayBox.isChecked()
             config_file(loaded_config)
-        KeepTrayBox.clicked.connect(toggleKeepTray)
-        settings_layout.addWidget(KeepTrayBox)
+        self.KeepTrayBox.clicked.connect(toggleKeepTray)
+        settings_layout.addWidget(self.KeepTrayBox)
         #OpenRGB
-        OpenRGBBox = QtWidgets.QCheckBox()
-        OpenRGBBox.setText(app.translate('', "Use OpenRGB"))
+        self.OpenRGBBox = QtWidgets.QCheckBox()
+        self.OpenRGBBox.setText(app.translate('', "Use OpenRGB"))
         if loaded_config.get('OpenRGB', False):
-            OpenRGBBox.setChecked(True)
+            self.OpenRGBBox.setChecked(True)
             #openrgb.Start = True
         def toggleOpenRGB():
             #loaded_config['OpenRGB'] = openrgb.Start = OpenRGBBox.isChecked()
             config_file(loaded_config)
-        OpenRGBBox.clicked.connect(toggleOpenRGB)
-        #settings_layout.addWidget(OpenRGBBox)
+        self.OpenRGBBox.clicked.connect(toggleOpenRGB)
+        #settings_layout.addWidget(self.OpenRGBBox)
 
         # 語言選擇
         lang_layout = QtWidgets.QHBoxLayout()
-        lang_label = QtWidgets.QLabel(app.translate('', "Language"))
-        lang_combo = QtWidgets.QComboBox()
+        self.lang_label = QtWidgets.QLabel(app.translate('', "Language"))
+        self.lang_combo = QtWidgets.QComboBox()
         available_langs = scan_language_qm()
         system_locale = get_display_language()
         sys_name = LANG_NAMES.get(system_locale, system_locale)
         # 第一項：系統預設
-        lang_combo.addItem(f'{app.translate("", "System Default")}', '')
+        self.lang_combo.addItem(f'{app.translate("", "System Default")}', '')
         # 第二項：English（原始語言，不載入 .qm）
-        lang_combo.addItem('English  (en)', 'en')
+        self.lang_combo.addItem('English  (en)', 'en')
         current_lang = loaded_config.get('language', '')
         selected_idx = 0
         if current_lang == 'en':
             selected_idx = 1
         for i, (code, name) in enumerate(available_langs):
-            lang_combo.addItem(f'{name}  ({code})', code)
+            self.lang_combo.addItem(f'{name}  ({code})', code)
             if code == current_lang:
                 selected_idx = i + 2  # +2 因為前面有系統預設和 English
         def changeLanguage():
-            code = lang_combo.currentData()
-            loaded_config['language'] = code
-            config_file(loaded_config)
-            ShortMesg.put(app.translate('', "Language saved, restart app to apply"))
-        lang_combo.currentIndexChanged.connect(changeLanguage)
-        lang_combo.blockSignals(True)
-        lang_combo.setCurrentIndex(selected_idx)
-        lang_combo.blockSignals(False)
-        lang_layout.addWidget(lang_label)
-        lang_layout.addWidget(lang_combo)
+            code = self.lang_combo.currentData()
+            change_language(code)
+        self.lang_combo.currentIndexChanged.connect(changeLanguage)
+        self.lang_combo.blockSignals(True)
+        self.lang_combo.setCurrentIndex(selected_idx)
+        self.lang_combo.blockSignals(False)
+        lang_layout.addWidget(self.lang_label)
+        lang_layout.addWidget(self.lang_combo)
         settings_layout.addLayout(lang_layout)
         
 
         # 網路 Port 設定
         port_layout = QtWidgets.QHBoxLayout()
-        port_label = QtWidgets.QLabel(app.translate('', "Network port"))
+        self.port_label = QtWidgets.QLabel(app.translate('', "Network port"))
         port_spin = QtWidgets.QSpinBox()
         port_spin.setRange(1024, 65535)
         port_spin.setValue(loaded_config.get('port', 25505))
@@ -929,13 +971,13 @@ class main_window(QtWidgets.QWidget):
 
         
         # 檢查更新
-        update_button = QtWidgets.QPushButton(app.translate('', "Check for Updates"))
-        update_button.clicked.connect(lambda: check_for_updates())
-        settings_layout.addWidget(update_button)
+        self.update_button = QtWidgets.QPushButton(app.translate('', "Check for Updates"))
+        self.update_button.clicked.connect(lambda: check_for_updates())
+        settings_layout.addWidget(self.update_button)
         # 返回
-        back_button = QtWidgets.QPushButton(app.translate('', "Back"))
-        back_button.clicked.connect(lambda: MainWindow.leftStacked.setCurrentWidget(self.main_page))
-        settings_layout.addWidget(back_button)
+        self.back_button = QtWidgets.QPushButton(app.translate('', "Back"))
+        self.back_button.clicked.connect(lambda: MainWindow.leftStacked.setCurrentWidget(self.main_page))
+        settings_layout.addWidget(self.back_button)
 
     def init_SystemTray(self):
         '建立系統匣'

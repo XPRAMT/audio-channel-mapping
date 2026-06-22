@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation>Переключиться на предустановку</translation>
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation>Язык изменён</translation>
+    </message>
   </context>
 </TS>

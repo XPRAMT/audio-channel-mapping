@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation>プリセットに切り替え</translation>
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation>言語を変更しました</translation>
+    </message>
   </context>
 </TS>

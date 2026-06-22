@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation>প্রিসেটে স্যুইচ করুন</translation>
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation>ভাষা পরিবর্তিত হয়েছে</translation>
+    </message>
   </context>
 </TS>

@@ -158,5 +158,9 @@
       <source>Switch to preset</source>
       <translation type="unfinished" />
     </message>
+    <message>
+      <source>Language changed</source>
+      <translation type="unfinished" />
+    </message>
   </context>
 </TS>
