@@ -20,7 +20,6 @@ VOLUME_EPSILON = 0.005
 VOLUME_SET_SUPPRESS_SECONDS = 1.5
 HTTP_CLIENT_QUEUE_SIZE = 8
 
-_browser = None
 _cast_infos = {}
 _streams = {}
 _volume_set_suppress_until = {}
@@ -48,8 +47,7 @@ def stream_path(dev_id):
 
 def read_device_volume(cast_info, fallback=1.0):
     try:
-        zconf = _browser.zc if _browser else None
-        cast = pychromecast.Chromecast(cast_info, zconf=zconf)
+        cast = pychromecast.Chromecast(cast_info)
         cast.wait(timeout=5)
         status = cast.status
         volume = getattr(status, "volume_level", None)
@@ -64,8 +62,7 @@ def read_device_volume(cast_info, fallback=1.0):
 
 def set_device_volume(cast_info, volume):
     try:
-        zconf = _browser.zc if _browser else None
-        cast = pychromecast.Chromecast(cast_info, zconf=zconf)
+        cast = pychromecast.Chromecast(cast_info)
         cast.wait(timeout=5)
         cast.set_volume(max(0.0, min(1.0, float(volume))))
         cast.disconnect()
@@ -198,8 +195,7 @@ class ChromecastStream:
         if self.started:
             return
         ensure_http_server()
-        zconf = _browser.zc if _browser else None
-        self.cast = pychromecast.Chromecast(self.cast_info, zconf=zconf)
+        self.cast = pychromecast.Chromecast(self.cast_info)
         self.cast.wait(timeout=10)
         local_ip = local_ip_for_target(self.cast_info.host)
         port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
@@ -334,16 +330,12 @@ def update_discovered_devices(devices):
 
 
 def discover_once(timeout=5):
-    global _browser
     devices, browser = pychromecast.discovery.discover_chromecasts(timeout=timeout)
-    if _browser:
-        try:
-            _browser.stop_discovery()
-        except Exception:
-            pass
-    _browser = browser
-    update_discovered_devices(devices)
-    print(f"[Chromecast] found {len(devices)} device(s)")
+    try:
+        update_discovered_devices(devices)
+        print(f"[Chromecast] found {len(devices)} device(s)")
+    finally:
+        browser.stop_discovery()
 
 
 def discovery_loop():
