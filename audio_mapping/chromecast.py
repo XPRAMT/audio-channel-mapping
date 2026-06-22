@@ -248,7 +248,7 @@ class ChromecastStream:
         self.header_sent = False
         self.started = False
         self.play_thread = None
-        self.logged_first_audio = False
+        self._pending_play = True
         self._last_audio_time = 0
 
     def start(self):
@@ -259,7 +259,7 @@ class ChromecastStream:
         self.broadcaster = PcmBroadcaster()
         self.broadcaster.dev_id = self.dev_id
         self.header_sent = False
-        self.logged_first_audio = False
+        self._pending_play = True
         self.broadcaster.clear_audio_backlog()
         header = make_wav_header(self.sample_rate)
         self.broadcaster.set_header(header)
@@ -292,9 +292,8 @@ class ChromecastStream:
             log(f"media.is_active: {media.is_active}")
             media.block_until_active(timeout=3)
             log(f"media.is_active: {media.is_active}")
-            media.play()
-            log(f"media play sent")
-            # 音訊中斷超過 30 秒則重新 play_media
+            # play() 推遲到 publish_audio 收到第一個音訊包後才送
+            # 每 30 秒檢查：音訊中斷超過 30 秒則重建 session
             def keep_playing():
                 while self.started and self.cast:
                     time.sleep(30)
@@ -307,8 +306,8 @@ class ChromecastStream:
                             url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
                             self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
                             self.cast.media_controller.block_until_active(timeout=3)
-                            log(f"reloaded")
-                        self.cast.media_controller.play()
+                            self._pending_play = True
+                            log(f"reloaded, pending play")
                     except Exception:
                         pass
             threading.Thread(target=keep_playing, daemon=True).start()
@@ -325,9 +324,11 @@ class ChromecastStream:
 
     def publish_audio(self, data):
         self._last_audio_time = time.time()
-        if not self.logged_first_audio:
-            self.logged_first_audio = True
-            log(f"first mapped audio {len(data)} bytes")
+        if self._pending_play:
+            self._pending_play = False
+            if self.cast:
+                self.cast.media_controller.play()
+                log(f"play sent")
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm24(data))
 
@@ -340,6 +341,7 @@ class ChromecastStream:
             log(f"stop error: {error}")
         self.broadcaster.close()
         self.header_sent = False
+        self._pending_play = True
 
 
 def ensure_http_server():
