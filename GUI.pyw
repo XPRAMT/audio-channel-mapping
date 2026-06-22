@@ -965,7 +965,7 @@ class main_window(QtWidgets.QWidget):
             shared.Config['port'] = loaded_config['port']
             ShortMesg.put(app.translate('', "Port saved, restart app to apply"))
         port_spin.valueChanged.connect(changePort)
-        port_layout.addWidget(port_label)
+        port_layout.addWidget(self.port_label)
         port_layout.addWidget(port_spin)
         settings_layout.addLayout(port_layout)
 
