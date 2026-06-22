@@ -337,6 +337,20 @@ class ChromecastStream:
         log(f"stream resumed {self.cast_info.friendly_name}")
         if self.cast:
             try:
+                # 檢查 session 是否還在，若已 IDLE 需重新 play_media
+                need_reload = True
+                try:
+                    state = self.cast.media_controller.status.player_state
+                    if state == "PAUSED":
+                        need_reload = False
+                except Exception:
+                    pass
+                if need_reload:
+                    local_ip = local_ip_for_target(self.cast_info.host)
+                    port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+                    url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
+                    self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
+                    log(f"play_media sent (resume reload)")
                 self.cast.media_controller.play()
                 log(f"media play sent (resume)")
             except Exception as error:
