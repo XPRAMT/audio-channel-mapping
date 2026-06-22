@@ -250,7 +250,6 @@ class ChromecastStream:
         self.started = False
         self.play_thread = None
         self.logged_first_audio = False
-        self._last_session_ensure = 0
 
     def start(self):
         if self.started:
@@ -278,8 +277,23 @@ class ChromecastStream:
             cast.wait(timeout=CAST_WAIT_TIMEOUT)
             log(f"cast wait done {self.cast_info.friendly_name}")
             self.cast = cast
+            local_ip = local_ip_for_target(self.cast_info.host)
+            port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+            url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
+            media = cast.media_controller
+            media.play_media(
+                url,
+                CONTENT_TYPE,
+                title="Audio Mapping",
+                stream_type="LIVE",
+                autoplay=True,
+            )
+            log(f"play_media sent {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
+            media.block_until_active(timeout=3)
+            media.play()
+            log(f"media play sent")
         except Exception as error:
-            log(f"connect error: {error}")
+            log(f"connect/play error: {error}")
 
     def set_volume(self, volume):
         if not self.cast:
@@ -289,59 +303,22 @@ class ChromecastStream:
         except Exception as error:
             log(f"volume error: {error}")
 
-    def _ensure_session(self):
-        """If session is IDLE or unconnected, queue session start in background."""
-        if not self.cast:
-            return
-        now = time.time()
-        if now - self._last_session_ensure < 3:
-            return
-        try:
-            state = self.cast.media_controller.status.player_state
-            if state == "PLAYING":
-                return
-            if state in ("PAUSED", "BUFFERING"):
-                self.cast.media_controller.play()
-                return
-        except Exception:
-            pass
-        # IDLE or error → queue reload (throttled to once per 3s)
-        self._last_session_ensure = now
-        shared.to_chromecast.put(["ensure_session", self.dev_id])
-
     def publish_audio(self, data):
         if not self.logged_first_audio:
             self.logged_first_audio = True
             log(f"first mapped audio {len(data)} bytes")
-        self._ensure_session()
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm24(data))
 
     def stop(self):
         self.started = False
+        try:
+            if self.cast:
+                self.cast.media_controller.stop()
+        except Exception as error:
+            log(f"stop error: {error}")
         self.broadcaster.close()
         self.header_sent = False
-        self.logged_first_audio = False
-        self.broadcaster = PcmBroadcaster()
-        self.broadcaster.dev_id = self.dev_id
-        log(f"broadcaster stopped, cast connection kept")
-
-    def resume(self):
-        if self.started:
-            return
-        ensure_http_server()
-        self.broadcaster.close()
-        self.broadcaster = PcmBroadcaster()
-        self.broadcaster.dev_id = self.dev_id
-        self.header_sent = False
-        self.logged_first_audio = False
-        self.broadcaster.clear_audio_backlog()
-        header = make_wav_header(self.sample_rate)
-        self.broadcaster.set_header(header)
-        self.broadcaster.publish(header)
-        self.header_sent = True
-        self.started = True
-        log(f"stream resumed {self.cast_info.friendly_name}")
 
 
 def ensure_http_server():
@@ -471,22 +448,10 @@ def sender_loop():
                 continue
             log(f"start request {dev_id} {sample_rate}Hz")
             stream = _streams.get(dev_id)
-            if stream:
-                if stream.sample_rate != sample_rate:
-                    stream.stop()
-                    _streams.pop(dev_id, None)
-                    stream = ChromecastStream(dev_id, cast_info, sample_rate)
-                    _streams[dev_id] = stream
-                else:
-                    try:
-                        stream.resume()
-                        _pending_audio.pop(dev_id, None)
-                        continue
-                    except Exception as error:
-                        log(f"resume error: {error}, falling back to new stream")
-                        stream.stop()
-                        _streams.pop(dev_id, None)
-                        stream = None
+            if stream and stream.sample_rate != sample_rate:
+                stream.stop()
+                _streams.pop(dev_id, None)
+                stream = None
             if not stream:
                 stream = ChromecastStream(dev_id, cast_info, sample_rate)
                 _streams[dev_id] = stream
@@ -509,31 +474,15 @@ def sender_loop():
                 _pending_volumes.pop(dev_id, None)
             else:
                 _pending_volumes[dev_id] = volume
-        elif action == "ensure_session":
-            _, dev_id = command
-            stream = _streams.get(dev_id)
-            if not stream or not stream.cast:
-                continue
-            try:
-                cast_info = _cast_infos.get(dev_id)
-                if not cast_info:
-                    continue
-                local_ip = local_ip_for_target(cast_info.host)
-                port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
-                url = f"http://{local_ip}:{port}{stream_path(dev_id)}"
-                stream.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
-                stream.cast.media_controller.block_until_active(timeout=3)
-                stream.cast.media_controller.play()
-            except Exception as error:
-                log(f"ensure session error: {error}")
         elif action == "stop":
             _, dev_id = command
-            stream = _streams.get(dev_id)
+            stream = _streams.pop(dev_id, None)
             if stream:
                 stream.stop()
         elif action == "stop_all":
             for dev_id, stream in list(_streams.items()):
                 stream.stop()
+                _streams.pop(dev_id, None)
 
 
 def start_chromecast():
