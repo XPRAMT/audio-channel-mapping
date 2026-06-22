@@ -250,6 +250,7 @@ class ChromecastStream:
         self.started = False
         self.play_thread = None
         self.logged_first_audio = False
+        self._last_session_ensure = 0
 
     def start(self):
         if self.started:
@@ -292,6 +293,9 @@ class ChromecastStream:
         """If session is IDLE or unconnected, queue session start in background."""
         if not self.cast:
             return
+        now = time.time()
+        if now - self._last_session_ensure < 3:
+            return
         try:
             state = self.cast.media_controller.status.player_state
             if state == "PLAYING":
@@ -301,9 +305,9 @@ class ChromecastStream:
                 return
         except Exception:
             pass
-        # IDLE or error → queue reload
+        # IDLE or error → queue reload (throttled to once per 3s)
+        self._last_session_ensure = now
         shared.to_chromecast.put(["ensure_session", self.dev_id])
-        log(f"queued session start/reload")
 
     def publish_audio(self, data):
         if not self.logged_first_audio:
@@ -510,7 +514,6 @@ def sender_loop():
             stream = _streams.get(dev_id)
             if not stream or not stream.cast:
                 continue
-            log(f"ensuring session for {dev_id}")
             try:
                 cast_info = _cast_infos.get(dev_id)
                 if not cast_info:
@@ -521,7 +524,6 @@ def sender_loop():
                 stream.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
                 stream.cast.media_controller.block_until_active(timeout=3)
                 stream.cast.media_controller.play()
-                log(f"session ensured for {dev_id}")
             except Exception as error:
                 log(f"ensure session error: {error}")
         elif action == "stop":
