@@ -215,26 +215,42 @@ class ChromecastStream:
         self.cast = None
         self.header_sent = False
         self.started = False
+        self.play_thread = None
 
     def start(self):
         if self.started:
             return
         ensure_http_server()
-        self.cast = pychromecast.Chromecast(self.cast_info, zconf=get_zconf())
-        self.cast.wait(timeout=10)
-        local_ip = local_ip_for_target(self.cast_info.host)
-        port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
-        url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
-        media = self.cast.media_controller
-        media.play_media(
-            url,
-            CONTENT_TYPE,
-            title="Audio Mapping",
-            stream_type="LIVE",
-            autoplay=True,
-        )
+        self.header_sent = False
+        self.broadcaster.clear_audio_backlog()
         self.started = True
-        print(f"[Chromecast] start {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
+        self.play_thread = threading.Thread(target=self._connect_and_play, daemon=True)
+        self.play_thread.start()
+
+    def _connect_and_play(self):
+        try:
+            cast = pychromecast.Chromecast(self.cast_info, zconf=get_zconf())
+            cast.wait(timeout=10)
+            self.cast = cast
+            local_ip = local_ip_for_target(self.cast_info.host)
+            port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+            url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
+            media = cast.media_controller
+            media.play_media(
+                url,
+                CONTENT_TYPE,
+                title="Audio Mapping",
+                stream_type="LIVE",
+                autoplay=True,
+            )
+            try:
+                media.block_until_active(timeout=10)
+                media.play()
+            except Exception as error:
+                print(f"[Chromecast] media active warning: {error}")
+            print(f"[Chromecast] start {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
+        except Exception as error:
+            print(f"[Chromecast] connect/play error: {error}")
 
     def set_volume(self, volume):
         if not self.cast:
@@ -392,7 +408,6 @@ def sender_loop():
             try:
                 stream.start()
                 _pending_audio.pop(dev_id, None)
-                stream.broadcaster.clear_audio_backlog()
             except Exception as error:
                 print(f"[Chromecast] start error: {error}")
         elif action == "audio":
