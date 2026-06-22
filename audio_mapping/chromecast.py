@@ -15,13 +15,15 @@ STREAM_PATH_PREFIX = "/chromecast"
 CONTENT_TYPE = "audio/wav"
 SUPPORTED_SAMPLE_RATES = (44100, 48000, 88200, 96000)
 DISCOVERY_INTERVAL = 30
-VOLUME_SYNC_INTERVAL = 1
+VOLUME_SYNC_INTERVAL = 0.5
 VOLUME_EPSILON = 0.005
+VOLUME_SET_SUPPRESS_SECONDS = 1.5
 HTTP_CLIENT_QUEUE_SIZE = 8
 
 _browser = None
 _cast_infos = {}
 _streams = {}
+_volume_set_suppress_until = {}
 _http_server = None
 _http_thread = None
 _http_lock = threading.Lock()
@@ -58,6 +60,17 @@ def read_device_volume(cast_info, fallback=1.0):
     except Exception as error:
         print(f"[Chromecast] read volume error: {error}")
         return fallback
+
+
+def set_device_volume(cast_info, volume):
+    try:
+        zconf = _browser.zc if _browser else None
+        cast = pychromecast.Chromecast(cast_info, zconf=zconf)
+        cast.wait(timeout=5)
+        cast.set_volume(max(0.0, min(1.0, float(volume))))
+        cast.disconnect()
+    except Exception as error:
+        print(f"[Chromecast] set device volume error: {error}")
 
 
 def read_stream_volume(stream, fallback=1.0):
@@ -370,9 +383,14 @@ def sender_loop():
         elif action == "volume":
             _, dev_id, volume = command
             update_client_volume(dev_id, volume, notify_gui=False)
+            _volume_set_suppress_until[dev_id] = time.time() + VOLUME_SET_SUPPRESS_SECONDS
             stream = _streams.get(dev_id)
             if stream:
                 stream.set_volume(volume)
+            else:
+                cast_info = _cast_infos.get(dev_id)
+                if cast_info:
+                    set_device_volume(cast_info, volume)
         elif action == "play_state":
             _, is_playing = command
             for stream in list(_streams.values()):
@@ -405,6 +423,8 @@ def volume_sync_loop():
         try:
             for dev_id, client in list(shared.clients.items()):
                 if client.get("type") != "chromecast":
+                    continue
+                if time.time() < _volume_set_suppress_until.get(dev_id, 0):
                     continue
                 fallback = float(client.get("volume", 1.0))
                 stream = _streams.get(dev_id)
