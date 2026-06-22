@@ -31,6 +31,7 @@ _pending_volumes = {}
 _discovery_misses = {}
 _volume_next_send_at = {}
 _pending_audio = {}
+_smtc_states = {}
 _zconf = Zeroconf()
 _http_server = None
 _http_thread = None
@@ -576,6 +577,26 @@ def gap_check_tick():
         log(f"gap check tick error: {error}")
 
 
+def smtc_tick():
+    for dev_id, stream in list(_streams.items()):
+        if not stream.started or not stream.cast:
+            continue
+        try:
+            status = stream.cast.media_controller.status
+            state = getattr(status, "player_state", None)
+        except Exception:
+            continue
+        if not state:
+            continue
+        prev = _smtc_states.get(dev_id)
+        if prev is not None and prev != state:
+            if (prev == "PLAYING" and state in ("PAUSED", "IDLE")) or \
+               (state == "PLAYING" and prev in ("PAUSED", "IDLE")):
+                log(f"smtc play/pause {prev} -> {state}")
+                shared.to_GUI.put([6, 'play/pause'])
+        _smtc_states[dev_id] = state
+
+
 def chromecast_tick_loop():
     tick = 0
     while True:
@@ -583,6 +604,7 @@ def chromecast_tick_loop():
         volume_sender_tick()
         volume_sync_tick()
         gap_check_tick()
+        smtc_tick()
         if tick % 6 == 0:
             discovery_tick()
         time.sleep(0.5)
