@@ -298,7 +298,7 @@ class ChromecastStream:
             # 每 30 秒檢查：音訊中斷超過 30 秒則重建 session
             def keep_playing():
                 while self.started and self.cast:
-                    time.sleep(30)
+                    time.sleep(5)
                     try:
                         gap = time.time() - self._last_audio_time
                         if gap > 29:
