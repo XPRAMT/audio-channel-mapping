@@ -24,6 +24,7 @@ HTTP_CLIENT_QUEUE_SIZE = 8
 _cast_infos = {}
 _streams = {}
 _volume_set_suppress_until = {}
+_pending_volumes = {}
 _zconf = Zeroconf()
 _http_server = None
 _http_thread = None
@@ -339,10 +340,7 @@ def update_discovered_devices(devices):
 
 
 def discover_once(timeout=5):
-    devices, browser = pychromecast.discovery.discover_chromecasts(
-        timeout=timeout,
-        zeroconf_instance=get_zconf(),
-    )
+    devices, browser = pychromecast.discovery.discover_chromecasts(timeout=timeout)
     try:
         update_discovered_devices(devices)
         print(f"[Chromecast] found {len(devices)} device(s)")
@@ -389,13 +387,7 @@ def sender_loop():
             _, dev_id, volume = command
             update_client_volume(dev_id, volume, notify_gui=False)
             _volume_set_suppress_until[dev_id] = time.time() + VOLUME_SET_SUPPRESS_SECONDS
-            stream = _streams.get(dev_id)
-            if stream:
-                stream.set_volume(volume)
-            else:
-                cast_info = _cast_infos.get(dev_id)
-                if cast_info:
-                    set_device_volume(cast_info, volume)
+            _pending_volumes[dev_id] = volume
         elif action == "play_state":
             _, is_playing = command
             for stream in list(_streams.values()):
@@ -414,6 +406,7 @@ def sender_loop():
 def start_chromecast():
     threading.Thread(target=sender_loop, daemon=True).start()
     threading.Thread(target=discovery_loop, daemon=True).start()
+    threading.Thread(target=volume_sender_loop, daemon=True).start()
     threading.Thread(target=volume_sync_loop, daemon=True).start()
 
 
@@ -421,6 +414,25 @@ def publish_audio(dev_id, data):
     stream = _streams.get(dev_id)
     if stream and stream.started:
         stream.publish_audio(data)
+
+
+def volume_sender_loop():
+    while True:
+        try:
+            pending = dict(_pending_volumes)
+            _pending_volumes.clear()
+            for dev_id, volume in pending.items():
+                _volume_set_suppress_until[dev_id] = time.time() + VOLUME_SET_SUPPRESS_SECONDS
+                stream = _streams.get(dev_id)
+                if stream:
+                    stream.set_volume(volume)
+                else:
+                    cast_info = _cast_infos.get(dev_id)
+                    if cast_info:
+                        set_device_volume(cast_info, volume)
+        except Exception as error:
+            print(f"[Chromecast] volume sender loop error: {error}")
+        time.sleep(VOLUME_SYNC_INTERVAL)
 
 
 def volume_sync_loop():
