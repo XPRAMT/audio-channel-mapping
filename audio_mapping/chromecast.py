@@ -391,9 +391,8 @@ def sender_loop():
                 _streams[dev_id] = stream
             try:
                 stream.start()
-                pending_audio = _pending_audio.pop(dev_id, None)
-                if pending_audio:
-                    stream.publish_audio(pending_audio)
+                _pending_audio.pop(dev_id, None)
+                stream.broadcaster.clear_audio_backlog()
             except Exception as error:
                 print(f"[Chromecast] start error: {error}")
         elif action == "audio":
