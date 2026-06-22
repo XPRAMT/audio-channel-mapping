@@ -714,7 +714,7 @@ class main_window(QtWidgets.QWidget):
         Grid_btn.addWidget(button_del,0,1)
         # 建立輸入裝置切換按鈕
         button_switch = QtWidgets.QPushButton('🎧➞🎙️')#app.translate('', "Switch"))
-        button_switch.setToolTip('Toggle input between speakers and microphone')
+        button_switch.setToolTip('Toggle input between microphone and speakers (loopback)')
         button_switch.clicked.connect(switch_inputDev)
         Grid_btn.addWidget(button_switch,0,2)
         # 建立設定按鈕
