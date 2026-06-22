@@ -17,20 +17,18 @@ CONTENT_TYPE = "audio/wav"
 CHROMECAST_BYTE_PER_SAMPLE = 3
 SUPPORTED_SAMPLE_RATES = (44100, 48000, 88200, 96000)
 CAST_WAIT_TIMEOUT = 1.5
-DISCOVERY_INTERVAL = 5
+DISCOVERY_INTERVAL = 3
 VOLUME_SYNC_INTERVAL = 0.5
 VOLUME_EPSILON = 0.005
 VOLUME_SET_SUPPRESS_SECONDS = 1.5
 HTTP_CLIENT_QUEUE_SIZE = 8
-DISCOVERY_MISS_LIMIT = 1
-CONNECT_FAIL_LIMIT = 3
+DISCOVERY_MISS_LIMIT = 2
 
 _cast_infos = {}
 _streams = {}
 _volume_set_suppress_until = {}
 _pending_volumes = {}
 _discovery_misses = {}
-_connect_fails = {}
 _volume_next_send_at = {}
 _pending_audio = {}
 _zconf = Zeroconf()
@@ -295,10 +293,6 @@ class ChromecastStream:
             log(f"media play sent")
         except Exception as error:
             log(f"connect/play error: {error}")
-            _connect_fails[self.dev_id] = _connect_fails.get(self.dev_id, 0) + 1
-            if _connect_fails[self.dev_id] >= CONNECT_FAIL_LIMIT:
-                log(f"failed {CONNECT_FAIL_LIMIT} times, removing {self.dev_id}")
-                remove_chromecast(self.dev_id)
 
     def set_volume(self, volume):
         if not self.cast:
@@ -430,7 +424,6 @@ def remove_chromecast(dev_id):
     shared.clients.pop(dev_id, None)
     _cast_infos.pop(dev_id, None)
     _discovery_misses.pop(dev_id, None)
-    _connect_fails.pop(dev_id, None)
     shared.to_GUI.put([3, "Rescan"])
 
 
