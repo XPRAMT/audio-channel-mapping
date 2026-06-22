@@ -4,13 +4,13 @@ from winsdk.windows.storage.streams import DataReader, Buffer, InputStreamOption
 from qasync import asyncSlot
 import sys, os
 import time
-import a_shared
+from . import a_shared
 
 def asset_path(relative_path):
     "回傳資產路徑，支援開發/PyInstaller 打包模式"
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), relative_path)
 
 def TimeSpan(seconds):
     return int(seconds * 10**7)
@@ -116,8 +116,8 @@ class MediaControlWidget(QtWidgets.QWidget):
         MainLayout.addLayout(timeLayout)
         # 控制按鈕
         #⏮⏪▶️⏩⏭
-        self.btnPlayIcon = QtGui.QIcon(QtGui.QPixmap("C:\APP\@develop/audio-channel-mapping\icon\widget_play_normal.png"))
-        self.btnPauseIcon = QtGui.QIcon(QtGui.QPixmap("C:\APP\@develop/audio-channel-mapping\icon\widget_pause_normal.png"))
+        self.btnPlayIcon = QtGui.QIcon(QtGui.QPixmap(asset_path("icon/widget_play_normal.png")))
+        self.btnPauseIcon = QtGui.QIcon(QtGui.QPixmap(asset_path("icon/widget_pause_normal.png")))
         btnLayout = QtWidgets.QHBoxLayout()
         self.btnPrev = controlBtn('')
         self.btnRew = QtWidgets.QPushButton('')

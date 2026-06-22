@@ -6,12 +6,12 @@ from qasync import QEventLoop
 #import qdarktheme
 from functools import partial
 import pyaudiowpatch as pyaudio
-import a_shared
-import a_mapping
-import a_volume
-import a_server
-#import a_openrgb
-import a_smtc
+from audio_mapping import a_shared
+from audio_mapping import a_mapping
+from audio_mapping import a_volume
+from audio_mapping import a_server
+#from audio_mapping import a_openrgb
+from audio_mapping import a_smtc
 
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
 ##########FUN##########

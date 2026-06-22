@@ -6,7 +6,7 @@ from ctypes import POINTER, cast, Structure
 from ctypes.wintypes import WORD, DWORD
 import time
 import copy
-import a_shared
+from . import a_shared
 
 # 定義常量
 WAVE_FORMAT_EXTENSIBLE = 0xFFFE  # WAVE_FORMAT_EXTENSIBLE 格式標籤

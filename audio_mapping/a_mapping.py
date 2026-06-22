@@ -1,11 +1,11 @@
-﻿import pyaudiowpatch as pyaudio
+import pyaudiowpatch as pyaudio
 import numpy as np
 import queue
 import threading
-import a_shared
+from . import a_shared
 import time
-from scipy.signal import butter, sosfilt
-#import a_openrgb
+#from scipy.signal import butter, sosfilt
+#from . import a_openrgb
 #######################
 class Mapping():
     def __init__(self):
@@ -15,7 +15,7 @@ class Mapping():
         self.inputDev = None   # 輸入固定參數
         self.np_type = np.float32
         self.pya_type = pyaudio.paFloat32
-        self.sos = self.design_lowpass_transition_sos()
+        #self.sos = self.design_lowpass_transition_sos()
 
     def getTime(self):
         'h:m:s.ms'
@@ -44,15 +44,14 @@ class Mapping():
                     outdata[:,outCh] = np.interp(indices[:-1], np.arange(self.CHUNK),indata[:,inCh])*vol
         return outdata
     
+    """
     def design_lowpass_transition_sos(self,fs=48000, low=190, high=230, order=6):
         sos = butter(order, low / (0.5 * fs), btype='low', output='sos')
         return sos
     
     def EQ(self,indata: np.ndarray) -> np.ndarray:
-        """
-        fs : int
-            取樣頻率 (Sampling Rate)，單位 Hz
-        """ 
+        #fs : int
+        #    取樣頻率 (Sampling Rate)，單位 Hz
         if indata.ndim == 1:
             # 單聲道
             y = sosfilt(self.sos, indata)
@@ -61,6 +60,7 @@ class Mapping():
             y = np.stack([sosfilt(self.sos, indata[:, ch]) for ch in range(indata.shape[1])], axis=1)
 
         return y.astype(self.np_type)*5
+        """
 
     def callback_input(self,inCh):
         '輸入處理'
@@ -111,8 +111,8 @@ class Mapping():
                     
                 indata = Queue.get()
                 outdata = self.OutputProcesse(outdevName,indata,CHUNKFix,CH_num)
-                if "DualSense" in outdevName:
-                    outdata = self.EQ(outdata)
+                #if "DualSense" in outdevName:
+                #    outdata = self.EQ(outdata)
 
             return (outdata, pyaudio.paContinue)
         return callback_B
@@ -222,4 +222,3 @@ class Mapping():
         a_shared.to_GUI.put([2,'Stop mapping'])
         a_shared.Header.startStop = False
         self.sendState()
-    

@@ -3,7 +3,7 @@ import struct
 import threading
 import time
 from zeroconf import Zeroconf, ServiceInfo
-import a_shared
+from . import a_shared
 import subprocess
 import json
 
