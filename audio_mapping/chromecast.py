@@ -325,7 +325,9 @@ class ChromecastStream:
     def publish_audio(self, data):
         self._last_audio_time = time.time()
         self.broadcaster.clear_audio_backlog()
-        self.broadcaster.publish(float32_to_pcm24(data))
+        pcm_data = float32_to_pcm24(data)
+        log(f"audio published {len(pcm_data)} bytes")
+        self.broadcaster.publish(pcm_data)
         if self._pending_play:
             if self.cast:
                 self._pending_play = False
