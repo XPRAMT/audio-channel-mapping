@@ -4,7 +4,7 @@ from winsdk.windows.storage.streams import DataReader, Buffer, InputStreamOption
 from qasync import asyncSlot
 import sys, os
 import time
-from . import a_shared
+from . import shared
 
 def asset_path(relative_path):
     "回傳資產路徑，支援開發/PyInstaller 打包模式"
@@ -218,10 +218,10 @@ class MediaControlWidget(QtWidgets.QWidget):
     async def update_status(self):
         '更新狀態'
         self.session = await self.get_session()
-        prev_isPlaying = a_shared.Header.isPlaying
+        prev_isPlaying = shared.Header.isPlaying
 
         if self.session is None:
-            a_shared.Header.isPlaying = False
+            shared.Header.isPlaying = False
             self.infoLabel.setVisible(False)
             self.currentTimeLabel.setText("00:00")
             self.totalTimeLabel.setText("00:00")
@@ -235,11 +235,11 @@ class MediaControlWidget(QtWidgets.QWidget):
                 timeline = self.session.get_timeline_properties()
             except:
                 self.session = None
-                a_shared.Header.isPlaying = False
+                shared.Header.isPlaying = False
 
         if not (self.session is None or info is None):
             # 同步播放狀態
-            a_shared.Header.isPlaying = (playback.playback_status.value == 4)  # 4 = Playing
+            shared.Header.isPlaying = (playback.playback_status.value == 4)  # 4 = Playing
             def printInfo():
                 print("----- dir() 列出屬性與其值 -----")
                 for name in dir(info):
@@ -301,9 +301,9 @@ class MediaControlWidget(QtWidgets.QWidget):
                 self.control('rew')
 
         # 媒體播放狀態變更時，推送給所有連線客戶端
-        if a_shared.Header.isPlaying != prev_isPlaying:
-            for IP in list(a_shared.clients.keys()):
-                a_shared.to_server.put([IP, 'state', None])
+        if shared.Header.isPlaying != prev_isPlaying:
+            for IP in list(shared.clients.keys()):
+                shared.to_server.put([IP, 'state', None])
 
     def control(self, action):
         '發送控制指令'

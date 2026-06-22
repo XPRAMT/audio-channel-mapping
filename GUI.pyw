@@ -6,12 +6,12 @@ from qasync import QEventLoop
 #import qdarktheme
 from functools import partial
 import pyaudiowpatch as pyaudio
-from audio_mapping import a_shared
-from audio_mapping import a_mapping
-from audio_mapping import a_volume
-from audio_mapping import a_server
-#from audio_mapping import a_openrgb
-from audio_mapping import a_smtc
+from audio_mapping import shared
+from audio_mapping import mapping
+from audio_mapping import volume
+from audio_mapping import server
+#from audio_mapping import openrgb
+from audio_mapping import smtc
 
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('xpramt.audio.channel.mapping')
 ##########FUN##########
@@ -44,11 +44,11 @@ def ScanClicked(tmpMapRunning=False):
     loaded_config = config_file()
     # 重置狀態
     Mapping.Start = False
-    a_volume.Stop = True
-    a_volume.initiDev = True
+    volume.Stop = True
+    volume.initiDev = True
     # 等待重置
     def isReset():
-        if not (Mapping.isRunning or a_volume.initiDev):
+        if not (Mapping.isRunning or volume.initiDev):
             '如果已停止'
             timerIsReset.stop()
             
@@ -68,8 +68,8 @@ def ScanClicked(tmpMapRunning=False):
 
 def switch_inputDev():
     """切換輸入類型🎧/🎙️"""
-    a_shared.isloopback = not a_shared.isloopback
-    if a_shared.isloopback:
+    shared.isloopback = not shared.isloopback
+    if shared.isloopback:
         button_switch.setText('🎧➞🎙️')
     else:
         button_switch.setText('🎙️➞🎧')
@@ -78,10 +78,10 @@ def switch_inputDev():
 def list_audio_devices():
     """列出音訊裝置"""
     global inputDev,inputDevID,CheckBoxs,VolSlider,VolLabel,SpinBoxs,outputDevs
-    a_shared.AllDevS = {}
+    shared.AllDevS = {}
     # 輸入裝置
     p = pyaudio.PyAudio()
-    if a_shared.isloopback: #設定輸入裝置
+    if shared.isloopback: #設定輸入裝置
         print(f'[INFO] 輸入為Loopback裝置')
         inputDev = p.get_default_wasapi_loopback()
         inputDevID = inputDev['name'] = inputDev['name'].replace(" [Loopback]","")
@@ -91,24 +91,24 @@ def list_audio_devices():
         inputDevID = inputDev['name'] + '🎙️'
     # 更新參數
     inputDev.update({
-        'switch': True,'IP': None,'chList':a_volume.DevS[inputDevID]['chList'],
-        'volume':a_volume.DevS[inputDevID]['volume'],'maxVol':100
+        'switch': True,'IP': None,'chList':volume.DevS[inputDevID]['chList'],
+        'volume':volume.DevS[inputDevID]['volume'],'maxVol':100
     })
-    a_shared.AllDevS[inputDevID]=inputDev
+    shared.AllDevS[inputDevID]=inputDev
     # 本機輸出裝置
     outputDevs = {}
     for device in p.get_device_info_generator_by_host_api(host_api_index=2):
         if (device['maxOutputChannels'] > 0) and (device['name'] != inputDevID):
             DevName = device['name']
             device.update({
-                'switch': False,'IP': None,'chList':a_volume.DevS[DevName]['chList'],
-                'volume': a_volume.DevS[DevName]['volume'],'maxVol':100
+                'switch': False,'IP': None,'chList':volume.DevS[DevName]['chList'],
+                'volume': volume.DevS[DevName]['volume'],'maxVol':100
             })
             outputDevs[device['name']] = device
     p.terminate()
     # 網路輸出裝置
-    for client_IP in a_shared.clients:
-        dev = a_shared.clients.get(client_IP)
+    for client_IP in shared.clients:
+        dev = shared.clients.get(client_IP)
         MAC = dev['MAC']
         netdevice = {
             'maxOutputChannels': 2,'switch': False ,'name':dev['name'],
@@ -119,11 +119,11 @@ def list_audio_devices():
     # 依照名稱排序輸出裝置
     outputDevs = {k: outputDevs[k] for k in sorted(outputDevs)}
     # 完成AllDevS
-    a_shared.AllDevS.update(outputDevs)
-    for devName in a_shared.AllDevS:
-        for key in list(a_shared.AllDevS[devName].keys()):
+    shared.AllDevS.update(outputDevs)
+    for devName in shared.AllDevS:
+        for key in list(shared.AllDevS[devName].keys()):
             if 'Latency' in key:
-                a_shared.AllDevS[devName].pop(key)
+                shared.AllDevS[devName].pop(key)
     # 建立裝置UI
     clear_layout(Grid)
     clear_layout(cbox)
@@ -132,25 +132,25 @@ def list_audio_devices():
     VolLabel = {}
     SpinBoxs = {}
     clear_layout(cbox)
-    for i,devName in enumerate(a_shared.AllDevS):
-        name = a_shared.AllDevS[devName]['name']
+    for i,devName in enumerate(shared.AllDevS):
+        name = shared.AllDevS[devName]['name']
         match = re.search(r'\((.*)\)',name )
         if loaded_config.get('shortName',False) and match:
             name = match.group(1)  # 提取最外層括號內的內容
         if devName == inputDevID: # 輸入裝置UI
-            a_shared.AllDevS[devName]['name'] = f'{name} | {inputDev["defaultSampleRate"]/1000}KHz'
+            shared.AllDevS[devName]['name'] = f'{name} | {inputDev["defaultSampleRate"]/1000}KHz'
             # 開關
             CheckBoxs[devName] = QtWidgets.QCheckBox()
             CheckBoxs[devName].setStyleSheet('color:rgb(0,230,0)')
-            CheckBoxs[devName].setText(a_shared.AllDevS[devName]['name'])
+            CheckBoxs[devName].setText(shared.AllDevS[devName]['name'])
             CheckBoxs[devName].setChecked(True)
             CheckBoxs[devName].clicked.connect(partial(GetCheckBoxs,devName))
             cbox.addWidget(CheckBoxs[devName])
         else: # 輸出裝置UI
-            a_shared.AllDevS[devName]['name'] = f'{i}. {name} | {a_shared.AllDevS[devName]["defaultSampleRate"]/1000}KHz'
+            shared.AllDevS[devName]['name'] = f'{i}. {name} | {shared.AllDevS[devName]["defaultSampleRate"]/1000}KHz'
             # 開關
             CheckBoxs[devName] = QtWidgets.QCheckBox()
-            CheckBoxs[devName].setText(a_shared.AllDevS[devName]['name'])
+            CheckBoxs[devName].setText(shared.AllDevS[devName]['name'])
             CheckBoxs[devName].clicked.connect(partial(GetCheckBoxs,devName))
             # 延遲
             SpinBoxs[devName] = QtWidgets.QSpinBox()
@@ -166,8 +166,8 @@ def list_audio_devices():
             hbox3.addWidget(SpinBoxs[devName])
             cbox.addLayout(hbox3)
         # 建立音量條
-        vol = a_shared.AllDevS[devName]['volume']
-        maxVol = a_shared.AllDevS[devName]['maxVol']
+        vol = shared.AllDevS[devName]['volume']
+        maxVol = shared.AllDevS[devName]['maxVol']
         VolSlider[devName] = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         VolSlider[devName].setRange(0,maxVol)
         VolSlider[devName].setValue(round(vol*maxVol))
@@ -189,11 +189,11 @@ def list_audio_devices():
         hbox_vol.addWidget(VolSlider[devName])
         cbox.addLayout(hbox_vol)
     # 自動勾選裝置
-    if 'devList' in a_shared.Config:
-        for devName in a_shared.Config['devList']:
+    if 'devList' in shared.Config:
+        for devName in shared.Config['devList']:
             if devName in CheckBoxs:
                 CheckBoxs[devName].setChecked(True)
-                a_shared.AllDevS[devName]['switch'] = True
+                shared.AllDevS[devName]['switch'] = True
     GetCheckBoxs(None) # 更新devList
 
 def LayoutClicked():
@@ -204,12 +204,12 @@ def LayoutClicked():
     table = [] # [device,channel]
     for i,devName in enumerate(outputDevs):
         chNum = outputDevs[devName]['maxOutputChannels']
-        # 建立 a_shared.Config
-        a_shared.Config.setdefault(devName,{'delay':0})
-        a_shared.Config[devName].setdefault('channels',[0 for _ in range(chNum)])
+        # 建立 shared.Config
+        shared.Config.setdefault(devName,{'delay':0})
+        shared.Config[devName].setdefault('channels',[0 for _ in range(chNum)])
         if outputDevs[devName]['switch'] == True:
             for c in range(chNum): #c=channel num
-                list_Row.append(f'dev{i+1}: {a_shared.AllDevS[devName]["chList"][c]}')
+                list_Row.append(f'dev{i+1}: {shared.AllDevS[devName]["chList"][c]}')
                 table.append([devName,c])
     # 建立聲道滑條
     clear_layout(Grid)
@@ -253,15 +253,15 @@ def Auto_Apply():
         for devName in loaded_config[coName]:
             if devName!=inputDevID:
                 Apply(devName,loaded_config[coName][devName])
-    elif 'devList' in a_shared.Config:
-        for devName in a_shared.Config['devList']:
+    elif 'devList' in shared.Config:
+        for devName in shared.Config['devList']:
             if devName!=inputDevID:
-                print(f'[INFO] Apply curent config: {devName} {a_shared.Config[devName]}')
-                Apply(devName,a_shared.Config[devName])
+                print(f'[INFO] Apply curent config: {devName} {shared.Config[devName]}')
+                Apply(devName,shared.Config[devName])
 
 def SetVolSlider(devName,vol):
     '設定音量滑條'
-    maxVol = a_shared.AllDevS[devName]['maxVol']
+    maxVol = shared.AllDevS[devName]['maxVol']
     VolSlider[devName].blockSignals(True)
     VolSlider[devName].setValue(round(vol*maxVol))
     VolSlider[devName].blockSignals(False)
@@ -271,18 +271,18 @@ def SetVolLabel(devName):
     '設定音量數值標籤'
     if devName not in VolLabel:
         return
-    maxVol = a_shared.AllDevS[devName]['maxVol']
+    maxVol = shared.AllDevS[devName]['maxVol']
     vol = round(VolSlider[devName].value()/maxVol*100)
     VolLabel[devName].setText(f'{vol}%')
     VolLabel[devName].setFixedWidth(VolLabel[devName].fontMetrics().horizontalAdvance(VolLabel[devName].text()))
 
 def GetVolSlider(devName):
     '音量滑條變動'
-    maxVol = a_shared.AllDevS[devName]['maxVol']
+    maxVol = shared.AllDevS[devName]['maxVol']
     vol = VolSlider[devName].value()/maxVol
     SetVolLabel(devName)
-    a_volume.setDevVol(devName,vol)
-    a_shared.VolChanger = devName
+    volume.setDevVol(devName,vol)
+    shared.VolChanger = devName
 
 def GetCheckBoxs(_): #devName   
     'CheckBox變動'
@@ -291,34 +291,34 @@ def GetCheckBoxs(_): #devName
     devList= []
     for devName in CheckBoxs:
         switch = CheckBoxs[devName].isChecked()
-        a_shared.AllDevS[devName]['switch'] = switch
+        shared.AllDevS[devName]['switch'] = switch
         if switch and devName!=inputDevID:
             coName+=devName
             devList.append(devName)
-    a_shared.Config['devList']=devList
-    #print(f'[INFO] 裝置變化\n{a_shared.Config}')
+    shared.Config['devList']=devList
+    #print(f'[INFO] 裝置變化\n{shared.Config}')
 
 def GetSpinBox(devName):
     '延遲SpinBox變動'
-    a_shared.Config[devName]['delay'] = SpinBoxs[devName].value()
-    #print(f'{a_shared.Config}')
+    shared.Config[devName]['delay'] = SpinBoxs[devName].value()
+    #print(f'{shared.Config}')
 
 def GetChSlider(devName, inch, c):
     '聲道滑條變動'
     for ch,inSlider in enumerate(ChSlider[devName][c]):
         if ch == inch:
-            a_shared.Config[devName]['channels'][c]=(ch + inSlider.value()/1000)
+            shared.Config[devName]['channels'][c]=(ch + inSlider.value()/1000)
         else: # 將其它滑條設為0
             inSlider.blockSignals(True)
             inSlider.setValue(0)
             inSlider.blockSignals(False)
-    #print(f'{a_shared.Config}')
+    #print(f'{shared.Config}')
 
 def current_mapping_snapshot():
     '取得目前聲道映射快照'
-    snapshot = {'devList': list(a_shared.Config.get('devList', [])), 'maps': {}}
+    snapshot = {'devList': list(shared.Config.get('devList', [])), 'maps': {}}
     for devName in snapshot['devList']:
-        devSetting = a_shared.Config.get(devName, {})
+        devSetting = shared.Config.get(devName, {})
         snapshot['maps'][devName] = {
             'delay': devSetting.get('delay', 0),
             'channels': list(devSetting.get('channels', []))
@@ -329,7 +329,7 @@ def SetChannelSliders(devName, channels):
     '設定聲道映射滑條'
     if devName not in ChSlider:
         return
-    a_shared.Config[devName]['channels'] = [0 for _ in ChSlider[devName]]
+    shared.Config[devName]['channels'] = [0 for _ in ChSlider[devName]]
     for c,outchs in enumerate(ChSlider[devName]):
         chVal = channels[c] if c < len(channels) else 0
         try:
@@ -346,19 +346,19 @@ def SetChannelSliders(devName, channels):
             outchs[inch].blockSignals(True)
             outchs[inch].setValue(sliderValue)
             outchs[inch].blockSignals(False)
-            a_shared.Config[devName]['channels'][c] = inch + sliderValue/1000
+            shared.Config[devName]['channels'][c] = inch + sliderValue/1000
 
 def ApplyMappingSnapshot(snapshot):
     '套用聲道映射快照'
     maps = snapshot.get('maps', {})
     for devName,devSetting in maps.items():
-        if devName not in a_shared.Config:
+        if devName not in shared.Config:
             continue
         delay = devSetting.get('delay', 0)
         if devName in SpinBoxs:
             SpinBoxs[devName].setValue(delay)
         else:
-            a_shared.Config[devName]['delay'] = delay
+            shared.Config[devName]['delay'] = delay
         SetChannelSliders(devName, devSetting.get('channels', []))
 
 def SaveQuickMappingClicked():
@@ -406,8 +406,8 @@ def SaveClicked():
     loaded_config = config_file()
     loaded_config.setdefault(coName,{})
     coDict = {}
-    for devName in a_shared.Config['devList']:
-        coDict[devName] = a_shared.Config[devName]
+    for devName in shared.Config['devList']:
+        coDict[devName] = shared.Config[devName]
     loaded_config[coName] = coDict
     config_file(loaded_config)
     ShortMesg.put(app.translate("", "Saved"))
@@ -418,9 +418,9 @@ def DelClicked():
     if coName in loaded_config:
         loaded_config.pop(coName,None)
         config_file(loaded_config)
-    for devName in a_shared.Config['devList']:
-        a_shared.Config[devName]['delay'] = 0
-        a_shared.Config[devName]['channels'] = [0 for _ in a_shared.Config[devName]['channels']]
+    for devName in shared.Config['devList']:
+        shared.Config[devName]['delay'] = 0
+        shared.Config[devName]['channels'] = [0 for _ in shared.Config[devName]['channels']]
     ShortMesg.put(app.translate("", "Deleted"))
 
 def clear_layout(layout):
@@ -583,7 +583,7 @@ class HandleReturnMessages(QtCore.QThread):
     def run(self):
         while True:
             # 等待狀態更新
-            state,parameter = a_shared.to_GUI.get()
+            state,parameter = shared.to_GUI.get()
             self.ReturnMeg.emit(state,parameter)
 
 ##########初始化##########
@@ -595,11 +595,11 @@ app.setStyle('Fusion')
 app.setFont(QtGui.QFont('Microsoft JhengHei',12))   
 # 載入設定
 loaded_config = config_file()
-a_shared.Config['port'] = loaded_config.get('port', 25505)
+shared.Config['port'] = loaded_config.get('port', 25505)
 # 建立翻譯器
 translator = translate()
 # 映射
-Mapping = a_mapping.Mapping()
+Mapping = mapping.Mapping()
 
 # 建立主頁面
 class main_window(QtWidgets.QWidget):
@@ -615,9 +615,9 @@ class main_window(QtWidgets.QWidget):
         self.worker.ReturnMeg.connect(self.update)
         self.worker.start()
         # 啟動線程
-        threading.Thread(target=a_volume.volSyncMain,daemon = True).start()  #音量同步
-        threading.Thread(target=a_server.start_server,daemon = True).start() #server
-        #threading.Thread(target=a_openrgb.OpenRGB,daemon=True).start()      #OpenRGB
+        threading.Thread(target=volume.volSyncMain,daemon = True).start()  #音量同步
+        threading.Thread(target=server.start_server,daemon = True).start() #server
+        #threading.Thread(target=openrgb.OpenRGB,daemon=True).start()      #OpenRGB
         threading.Thread(target=printShortMesg,daemon = True).start()        #ShortMesg
         # 掃描裝置
         ScanClicked()
@@ -648,7 +648,7 @@ class main_window(QtWidgets.QWidget):
         self.leftStacked.setCurrentWidget(self.main_page)
         self.MainLayout.addWidget(self.leftStacked)
         # 建立SMTC控制器
-        self.SMTC = a_smtc.MediaControlWidget()
+        self.SMTC = smtc.MediaControlWidget()
         self.MainLayout.addWidget(self.SMTC)
         self.SMTC.setVisible(loaded_config.get('mediaKey',False))
 
@@ -836,9 +836,9 @@ class main_window(QtWidgets.QWidget):
         OpenRGBBox.setText(app.translate('', "Use OpenRGB"))
         if loaded_config.get('OpenRGB', False):
             OpenRGBBox.setChecked(True)
-            #a_openrgb.Start = True
+            #openrgb.Start = True
         def toggleOpenRGB():
-            #loaded_config['OpenRGB'] = a_openrgb.Start = OpenRGBBox.isChecked()
+            #loaded_config['OpenRGB'] = openrgb.Start = OpenRGBBox.isChecked()
             config_file(loaded_config)
         OpenRGBBox.clicked.connect(toggleOpenRGB)
         #settings_layout.addWidget(OpenRGBBox)
@@ -885,7 +885,7 @@ class main_window(QtWidgets.QWidget):
         def changePort():
             loaded_config['port'] = port_spin.value()
             config_file(loaded_config)
-            a_shared.Config['port'] = loaded_config['port']
+            shared.Config['port'] = loaded_config['port']
             ShortMesg.put(app.translate('', "Port saved, restart app to apply"))
         port_spin.valueChanged.connect(changePort)
         port_layout.addWidget(port_label)
@@ -945,7 +945,7 @@ class main_window(QtWidgets.QWidget):
             case 5:  # 顯示延遲
                 devName,txt = parameter
                 if CheckBoxs[devName]:
-                    CheckBoxs[devName].setText(f'{a_shared.AllDevS[devName]["name"]} | {txt}')
+                    CheckBoxs[devName].setText(f'{shared.AllDevS[devName]["name"]} | {txt}')
             case 6: # 媒體鍵
                 self.SMTC.control(parameter)
             case 7: # 播放/暫停

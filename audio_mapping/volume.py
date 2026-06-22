@@ -6,7 +6,7 @@ from ctypes import POINTER, cast, Structure
 from ctypes.wintypes import WORD, DWORD
 import time
 import copy
-from . import a_shared
+from . import shared
 
 # 定義常量
 WAVE_FORMAT_EXTENSIBLE = 0xFFFE  # WAVE_FORMAT_EXTENSIBLE 格式標籤
@@ -70,12 +70,12 @@ class AudioEndpointVolumeCallback(COMObject):
         MainOnNotify(self.devName)
 
 def MainOnNotify(devName):
-    if a_shared.callbackOn:
+    if shared.callbackOn:
         vol = getDevVol(devName)
-        a_shared.AllDevS[devName]['volume'] = vol
-        a_shared.to_GUI.put([4,[devName,vol]])
-        a_shared.VolChanger = devName
-    a_shared.callbackOn = True
+        shared.AllDevS[devName]['volume'] = vol
+        shared.to_GUI.put([4,[devName,vol]])
+        shared.VolChanger = devName
+    shared.callbackOn = True
 
 def getDevVol(devName):
         return DevS[devName]['volPoint'].GetMasterVolumeLevelScalar()
@@ -84,15 +84,15 @@ def setDevVol(devName,vol):
     def PrintVol(vol,name,Xput='[○---]'):
         print(f'{Xput} {name} {round(vol*100)}%')
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-    if devName in a_shared.AllDevS:
-        a_shared.AllDevS[devName]['volume'] = vol
-        IP = a_shared.AllDevS[devName]['IP']
+    if devName in shared.AllDevS:
+        shared.AllDevS[devName]['volume'] = vol
+        IP = shared.AllDevS[devName]['IP']
         if IP:
             # 發送音量到Client
-            a_shared.clients[IP]['volume'] = a_shared.Header.volume = vol
-            a_shared.to_server.put([IP,'volume',None])
+            shared.clients[IP]['volume'] = shared.Header.volume = vol
+            shared.to_server.put([IP,'volume',None])
         else:
-            a_shared.callbackOn = False
+            shared.callbackOn = False
             # 設定本機裝置
             try:
                 DevS[devName]['volPoint'].SetMasterVolumeLevelScalar(vol, None)
@@ -107,19 +107,19 @@ def setDevVol(devName,vol):
 tmpScales = {}
 def syncVol():
     global tmpScales
-    VolChanger = a_shared.VolChanger
-    if VolChanger in a_shared.AllDevS and VolChanger in tmpAllDevS:
+    VolChanger = shared.VolChanger
+    if VolChanger in shared.AllDevS and VolChanger in tmpAllDevS:
         PreVol = tmpAllDevS[VolChanger]['volume']
-        CurVol = a_shared.AllDevS[VolChanger]['volume']
+        CurVol = shared.AllDevS[VolChanger]['volume']
         nameFlag=True
-        for devName in a_shared.AllDevS:
+        for devName in shared.AllDevS:
             # 組合名稱
             if nameFlag:
                 coName=devName+VolChanger
             else:
                 coName=VolChanger+devName
             # 處理音量變化
-            if (a_shared.AllDevS[devName]['switch'] and a_shared.AllDevS[VolChanger]['switch']
+            if (shared.AllDevS[devName]['switch'] and shared.AllDevS[VolChanger]['switch']
                     and (devName!=VolChanger) and devName in tmpAllDevS):
                 def editTmpScale(scale = None):
                     if scale:
@@ -146,11 +146,11 @@ def syncVol():
                 tmpScale = editTmpScale()
                 newVol = min(CurVol*tmpScale, 1)
                 setDevVol(devName,newVol)
-                a_shared.to_GUI.put([4,[devName,newVol]])
+                shared.to_GUI.put([4,[devName,newVol]])
                 #print(f'change slider {devName} {newVol} by {VolChanger}' )
 
             # 關閉,移除設定
-            if not (a_shared.AllDevS[devName]['switch'] and a_shared.AllDevS[VolChanger]['switch']):
+            if not (shared.AllDevS[devName]['switch'] and shared.AllDevS[VolChanger]['switch']):
                 tmpScales.pop(coName,None)
                 #print(f'移除 {coName}')
 
@@ -189,20 +189,20 @@ def volSyncMain():
                 wave_extensible = cast(wave_format, POINTER(WAVEFORMATEXTENSIBLE))
                 channel_mask = wave_extensible.contents.dwChannelMask
                 DevS[devName]['chList'] = parse_channel_mask(channel_mask)
-                    #print('chs: ',a_shared.AllDevS[devName]['chList'])
+                    #print('chs: ',shared.AllDevS[devName]['chList'])
                 #except Exception as e:
                 #    print(f'[ERRO] initi {device.FriendlyName}: {e}')
                 #    pass
                     
         initiDev = False
         # 開始偵測音量變化
-        tmpAllDevS = copy.deepcopy(a_shared.AllDevS)
-        a_shared.VolChanger = ''
+        tmpAllDevS = copy.deepcopy(shared.AllDevS)
+        shared.VolChanger = ''
         Stop = False
         while not Stop:
-            if a_shared.AllDevS != tmpAllDevS:
+            if shared.AllDevS != tmpAllDevS:
                 syncVol()
-            tmpAllDevS = copy.deepcopy(a_shared.AllDevS)
+            tmpAllDevS = copy.deepcopy(shared.AllDevS)
             time.sleep(0.05)
 
 

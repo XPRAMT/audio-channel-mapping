@@ -2,10 +2,10 @@ import pyaudiowpatch as pyaudio
 import numpy as np
 import queue
 import threading
-from . import a_shared
+from . import shared
 import time
 #from scipy.signal import butter, sosfilt
-#from . import a_openrgb
+#from . import openrgb
 #######################
 class Mapping():
     def __init__(self):
@@ -27,7 +27,7 @@ class Mapping():
     def OutputProcesse(self,devName,indata,CHUNKFix,CH_num):
         '輸出處理(重採樣,分配聲道)'
         outdata = np.zeros((CHUNKFix,CH_num),dtype=self.np_type)
-        channelSet = a_shared.Config[devName]['channels']
+        channelSet = shared.Config[devName]['channels']
         for outCh,inCh_Vol in enumerate(channelSet): 
             if indata.size > 0:
                 inCh = int(inCh_Vol)
@@ -73,7 +73,7 @@ class Mapping():
                     Queue.put(indata)
                     if IP: # 網路輸出裝置
                         CH_num = Dev['maxOutputChannels']
-                        delay = round(a_shared.Config[devName]['delay']/self.Frametime)
+                        delay = round(shared.Config[devName]['delay']/self.Frametime)
                         Qsize = Queue.qsize()
                         Dev['qsize'] = Qsize
                         if Qsize <= delay:
@@ -86,9 +86,9 @@ class Mapping():
                                     Queue.get_nowait()
 
                             outdata_bytes = self.OutputProcesse(devName,Queue.get(),self.CHUNK,CH_num).tobytes()
-                            a_shared.to_server.put([IP,False,outdata_bytes])
-            #if a_openrgb.Start:
-            #    a_openrgb.RGBQueue.put(indata)
+                            shared.to_server.put([IP,False,outdata_bytes])
+            #if openrgb.Start:
+            #    openrgb.RGBQueue.put(indata)
                         
             return (in_data, pyaudio.paContinue)
         return callback_A
@@ -98,7 +98,7 @@ class Mapping():
         def callback_B(in_data, frame_count, time_info, status):
             Qsize = Queue.qsize()
             self.outputDevs[outdevName]['qsize'] = Qsize
-            delay = int(a_shared.Config[outdevName]['delay']/self.Frametime)
+            delay = int(shared.Config[outdevName]['delay']/self.Frametime)
 
             if Qsize < delay:
                 #print(f'[Time] {getTime()} Qsize:{Qsize} wait')
@@ -122,22 +122,22 @@ class Mapping():
         for devName,Dev in self.outputDevs.items():
             if Dev['switch']:
                 Qsize = Dev.get('qsize',0)
-                a_shared.to_GUI.put([5,[devName,f'{Qsize* self.Frametime:02.0f}ms']])
+                shared.to_GUI.put([5,[devName,f'{Qsize* self.Frametime:02.0f}ms']])
                 if Qsize > 200: # 延遲太多重新掃描
-                    a_shared.to_GUI.put([3,None])
+                    shared.to_GUI.put([3,None])
                 
     def sendState(self):
         '對所有已連線裝置發送狀態'
         for devName in self.outputDevs:
             IP = self.outputDevs[devName].get('IP',False)
             if IP:
-                a_shared.to_server.put([IP,'state',None])
+                shared.to_server.put([IP,'state',None])
 
     def run(self):
         '啟動'
         self.isRunning = True
-        a_shared.to_GUI.put([1,self.isRunning]) #運作狀態
-        a_shared.to_GUI.put([2,'Start mapping'])
+        shared.to_GUI.put([1,self.isRunning]) #運作狀態
+        shared.to_GUI.put([2,'Start mapping'])
         # 輸入聲道,samplerate
         InputChannel = self.inputDev['maxInputChannels']
         InputRate = int(self.inputDev['defaultSampleRate'])
@@ -146,7 +146,7 @@ class Mapping():
         Framerate = 100 #可以整除96/48/44.1KHz
         self.Frametime = 1000/Framerate #ms
         self.CHUNK = round(InputRate/Framerate)
-        for devName in a_shared.Config['devList']:
+        for devName in shared.Config['devList']:
             writeQueue = queue.Queue()
             chNum = self.outputDevs[devName]['maxOutputChannels']
             OutputRate = int(self.outputDevs[devName]['defaultSampleRate'])
@@ -183,11 +183,11 @@ class Mapping():
                 stream_callback=self.callback_input(InputChannel))
         except Exception as error:
                     print(f'start error:{error}')
-        a_shared.Header.sampleRate = InputRate
-        a_shared.Header.channels = InputChannel
-        a_shared.Header.blockSize = self.CHUNK
-        a_shared.Header.startStop = True
-        #a_openrgb.RGBQueue.empty()
+        shared.Header.sampleRate = InputRate
+        shared.Header.channels = InputChannel
+        shared.Header.blockSize = self.CHUNK
+        shared.Header.startStop = True
+        #openrgb.RGBQueue.empty()
         self.sendState()
         Resample_msg = ''
         if Resample:
@@ -195,7 +195,7 @@ class Mapping():
             Resample_msg = f',Resampling!'
         # 等待停止&清空隊列
         print("[INFO] 啟動映射")
-        a_shared.to_GUI.put([0,f'幀長度:{self.CHUNK}Hz({self.Frametime:.0f}ms){Resample_msg}'])
+        shared.to_GUI.put([0,f'幀長度:{self.CHUNK}Hz({self.Frametime:.0f}ms){Resample_msg}'])
         timer = 0
         self.Start = True
         while self.Start:
@@ -217,8 +217,8 @@ class Mapping():
         sIn.close()
         pIn.terminate()
         self.isRunning = False
-        a_shared.to_GUI.put([0,''])    # 清空文字 
-        a_shared.to_GUI.put([1,self.isRunning]) # 運作狀態
-        a_shared.to_GUI.put([2,'Stop mapping'])
-        a_shared.Header.startStop = False
+        shared.to_GUI.put([0,''])    # 清空文字 
+        shared.to_GUI.put([1,self.isRunning]) # 運作狀態
+        shared.to_GUI.put([2,'Stop mapping'])
+        shared.Header.startStop = False
         self.sendState()
