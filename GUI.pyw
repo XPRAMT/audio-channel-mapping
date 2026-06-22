@@ -402,8 +402,7 @@ def update_preset_highlight():
     '更新方案按鈕高亮'
     for i, btn in enumerate(presetButtons):
         if i == presetIndex:
-            #btn.setStyleSheet('font-weight: bold; background-color: #4a90d9; color: white;')
-            pass
+            btn.setStyleSheet('font-weight: bold; color: yellow;')
         else:
             btn.setStyleSheet('')
 
@@ -727,9 +726,10 @@ class main_window(QtWidgets.QWidget):
         Grid_btn.addWidget(button_mapping,1,2)
         # 建立方案快捷鍵
         presetButtons = []
-        presetEmojis = ['1️⃣', '2️⃣', '3️⃣']
+        presetNums = ['1', '2', '3']
         for i in range(3):
-            btn = QtWidgets.QPushButton(presetEmojis[i])
+            btn = QtWidgets.QPushButton(presetNums[i])
+            btn.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
             btn.clicked.connect(partial(SelectPresetClicked, i))
             Grid_btn.addWidget(btn, 2, i)
             presetButtons.append(btn)
