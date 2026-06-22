@@ -523,7 +523,6 @@ def start_chromecast():
     threading.Thread(target=discovery_loop, daemon=True).start()
     threading.Thread(target=volume_sender_loop, daemon=True).start()
     threading.Thread(target=volume_sync_loop, daemon=True).start()
-    threading.Thread(target=status_log_loop, daemon=True).start()
 
 
 def publish_audio(dev_id, data):
@@ -570,47 +569,3 @@ def volume_sync_loop():
         except Exception as error:
             log(f"volume sync loop error: {error}")
         time.sleep(VOLUME_SYNC_INTERVAL)
-
-
-def status_log_loop():
-    """每 10 秒列印一次所有 Chromecast 裝置的詳細狀態。"""
-    while True:
-        time.sleep(10)
-        for dev_id, stream in list(_streams.items()):
-            if not stream.cast:
-                continue
-            try:
-                parts = [f"dev={stream.cast_info.friendly_name}"]
-                # 裝置狀態
-                status = stream.cast.status
-                if status:
-                    vol = getattr(status, "volume_level", "?")
-                    muted = getattr(status, "volume_muted", "?")
-                    app_id = getattr(status, "app_id", "?")
-                    display_name = getattr(status, "display_name", "?")
-                    parts.extend([
-                        f"vol={vol}", f"muted={muted}",
-                        f"app={display_name}", f"app_id={app_id}",
-                    ])
-                # 播放狀態
-                media = stream.cast.media_controller.status
-                if media:
-                    state = getattr(media, "player_state", "?")
-                    title = getattr(media, "title", "?")
-                    artist = getattr(media, "artist", "?")
-                    album = getattr(media, "album_name", "?")
-                    idle = getattr(media, "player_is_idle", "?")
-                    paused = getattr(media, "player_is_paused", "?")
-                    playing = getattr(media, "player_is_playing", "?")
-                    parts.extend([
-                        f"state={state}", f"idle={idle}",
-                        f"paused={paused}", f"playing={playing}",
-                        f"title={title}", f"artist={artist}",
-                        f"album={album}",
-                    ])
-                # stream 狀態
-                parts.append(f"started={stream.started}")
-                parts.append(f"sample_rate={stream.sample_rate}")
-                log(" | ".join(parts))
-            except Exception as error:
-                log(f"status error: {error}")
