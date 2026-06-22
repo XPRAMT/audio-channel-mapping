@@ -337,9 +337,6 @@ class ChromecastStream:
                 self._pending_play = False
                 self.cast.media_controller.play()
                 log(f"play sent")
-            else:
-                shared.to_chromecast.put(["play", self.dev_id])
-                log(f"play queued")
 
     def stop(self):
         self.started = False
