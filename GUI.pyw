@@ -27,9 +27,10 @@ def asset_path(relative_path):
 curVersion = "26.05.14"
 appName = "AudioMapping"
 coName = ''
-QUICK_MAPPING_CONFIG_KEY = 'quickMappingSlots'
-QUICK_MAPPING_INDEX_KEY = 'quickMappingSlotIndex'
-quickMappingSlotIndex = 0
+PRESET_DATA_KEY = 'presetData'
+PRESET_INDEX_KEY = 'presetIndex'
+presetIndex = 0
+presetButtons = []
 CheckBoxs = {}
 VolSlider = {}
 VolLabel = {}
@@ -255,7 +256,27 @@ def Auto_Apply():
         SpinBoxs[devName].setValue(devSetting['delay'])
         SetChannelSliders(devName, devSetting.get('channels', []))
 
-    # 更新配置
+    # 嘗試載入保存的方案
+    global presetIndex
+    presetData = loaded_config.get(PRESET_DATA_KEY, {})
+    comboSlots = presetData.get(coName, [])
+    if comboSlots:
+        idx = loaded_config.get(PRESET_INDEX_KEY, 0)
+        if idx < len(comboSlots) and comboSlots[idx] is not None:
+            presetIndex = idx
+            print(f'[INFO] Apply preset {idx+1}: {coName}')
+            ApplyMappingSnapshot(comboSlots[idx])
+            update_preset_highlight()
+            return
+        elif len(comboSlots) > 0 and comboSlots[0] is not None:
+            presetIndex = 0
+            print(f'[INFO] Apply preset 1: {coName}')
+            ApplyMappingSnapshot(comboSlots[0])
+            loaded_config[PRESET_INDEX_KEY] = 0
+            config_file(loaded_config)
+            update_preset_highlight()
+            return
+    # 舊有載入邏輯
     if coName in loaded_config:
         print(f'[INFO] Apply loaded config: {coName} {loaded_config[coName]}')
         for devName in loaded_config[coName]:
@@ -369,38 +390,30 @@ def ApplyMappingSnapshot(snapshot):
             shared.Config[devName]['delay'] = delay
         SetChannelSliders(devName, devSetting.get('channels', []))
 
-def SaveQuickMappingClicked():
-    '保存快速聲道映射'
-    global loaded_config,quickMappingSlotIndex
-    snapshot = current_mapping_snapshot()
-    if len(snapshot['maps']) == 0:
-        ShortMesg.put(app.translate('', 'No mapping to save'))
-        return
+def SelectPresetClicked(index):
+    '選擇方案'
+    global loaded_config,presetIndex
     loaded_config = config_file()
-    slots = loaded_config.setdefault(QUICK_MAPPING_CONFIG_KEY, [])
-    if len(slots) < 2:
-        slots.append(snapshot)
-        quickMappingSlotIndex = len(slots) - 1
+    presetData = loaded_config.setdefault(PRESET_DATA_KEY, {})
+    comboSlots = presetData.get(coName, [None, None, None])
+    if index < len(comboSlots) and comboSlots[index] is not None:
+        presetIndex = index
+        ApplyMappingSnapshot(comboSlots[index])
     else:
-        quickMappingSlotIndex = int(loaded_config.get(QUICK_MAPPING_INDEX_KEY, quickMappingSlotIndex)) % 2
-        slots[quickMappingSlotIndex] = snapshot
-    loaded_config[QUICK_MAPPING_INDEX_KEY] = quickMappingSlotIndex
-    config_file(loaded_config)
-    ShortMesg.put(f'{app.translate("", "Saved")} {quickMappingSlotIndex + 1}/2')
-
-def SwitchQuickMappingClicked():
-    '切換快速聲道映射'
-    global loaded_config,quickMappingSlotIndex
-    loaded_config = config_file()
-    slots = loaded_config.get(QUICK_MAPPING_CONFIG_KEY, [])[:2]
-    if len(slots) < 2:
-        ShortMesg.put(app.translate('', 'Save two mappings first'))
+        ShortMesg.put(app.translate('', 'Empty preset slot'))
         return
-    quickMappingSlotIndex = (int(loaded_config.get(QUICK_MAPPING_INDEX_KEY, quickMappingSlotIndex)) + 1) % 2
-    ApplyMappingSnapshot(slots[quickMappingSlotIndex])
-    loaded_config[QUICK_MAPPING_INDEX_KEY] = quickMappingSlotIndex
+    loaded_config[PRESET_INDEX_KEY] = presetIndex
     config_file(loaded_config)
-    ShortMesg.put(f'{app.translate("", "Switch")} {quickMappingSlotIndex + 1}/2')
+    update_preset_highlight()
+    ShortMesg.put(f'{app.translate("", "Preset")} {index + 1}/3')
+
+def update_preset_highlight():
+    '更新方案按鈕高亮'
+    for i, btn in enumerate(presetButtons):
+        if i == presetIndex:
+            btn.setStyleSheet('font-weight: bold; background-color: #4a90d9; color: white;')
+        else:
+            btn.setStyleSheet('')
 
 def MappingClicked():
     '開始/停止按鈕'
@@ -410,26 +423,39 @@ def MappingClicked():
     ScanClicked(True)
     
 def SaveClicked():
-    """儲存按鈕"""
+    """儲存到目前方案"""
+    global loaded_config,presetIndex
+    snapshot = current_mapping_snapshot()
+    if len(snapshot['maps']) == 0:
+        ShortMesg.put(app.translate('', 'No mapping to save'))
+        return
     loaded_config = config_file()
-    loaded_config.setdefault(coName,{})
-    coDict = {}
-    for devName in shared.Config['devList']:
-        coDict[devName] = shared.Config[devName]
-    loaded_config[coName] = coDict
+    presetData = loaded_config.setdefault(PRESET_DATA_KEY, {})
+    comboSlots = presetData.setdefault(coName, [None, None, None])
+    while len(comboSlots) < 3:
+        comboSlots.append(None)
+    comboSlots[presetIndex] = snapshot
+    presetData[coName] = comboSlots
+    loaded_config[PRESET_INDEX_KEY] = presetIndex
     config_file(loaded_config)
-    ShortMesg.put(app.translate("", "Saved"))
+    ShortMesg.put(f'{app.translate("", "Saved")} {presetIndex + 1}/3')
 
 def DelClicked():
-    """刪除按鈕"""
+    """清除目前方案"""
+    global loaded_config,presetIndex
     loaded_config = config_file()
-    if coName in loaded_config:
-        loaded_config.pop(coName,None)
-        config_file(loaded_config)
+    presetData = loaded_config.setdefault(PRESET_DATA_KEY, {})
+    comboSlots = presetData.setdefault(coName, [None, None, None])
+    while len(comboSlots) < 3:
+        comboSlots.append(None)
+    comboSlots[presetIndex] = None
+    presetData[coName] = comboSlots
+    loaded_config[PRESET_INDEX_KEY] = presetIndex
+    config_file(loaded_config)
     for devName in shared.Config['devList']:
         shared.Config[devName]['delay'] = 0
         shared.Config[devName]['channels'] = [0 for _ in shared.Config[devName]['channels']]
-    ShortMesg.put(app.translate("", "Deleted"))
+    ShortMesg.put(f'{app.translate("", "Cleared")} {presetIndex + 1}/3')
 
 def clear_layout(layout):
     """清除layout"""
@@ -667,6 +693,7 @@ class main_window(QtWidgets.QWidget):
         'Main UI'
         global button_mapping,button_scan,button_switch
         global status_label,mesg_label,Grid,vbox,cbox
+        global presetIndex,presetButtons
 
         # 建立一個垂直佈局管理器
         vbox = QtWidgets.QVBoxLayout(self.main_page)
@@ -706,21 +733,19 @@ class main_window(QtWidgets.QWidget):
         button_mapping = QtWidgets.QPushButton('▶️')#app.translate('', "Start"))
         button_mapping.clicked.connect(MappingClicked)
         Grid_btn.addWidget(button_mapping,1,2)
+        # 建立方案快捷鍵
+        presetButtons = []
+        for i in range(3):
+            btn = QtWidgets.QPushButton(f'{i+1}\ufe0f\u20e3')
+            btn.clicked.connect(partial(SelectPresetClicked, i))
+            Grid_btn.addWidget(btn, 2, i)
+            presetButtons.append(btn)
+        update_preset_highlight()
         # 建立一個網格佈局管理器
         Grid = QtWidgets.QGridLayout()
         Grid.setContentsMargins(0, 0, 0, 0)
         Grid.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         vbox.addLayout(Grid)
-        # 建立快速聲道映射按鈕
-        quick_map_box = QtWidgets.QHBoxLayout()
-        quick_map_box.setContentsMargins(0, 0, 0, 0)
-        vbox.addLayout(quick_map_box)
-        button_quick_save = QtWidgets.QPushButton('保存')
-        button_quick_save.clicked.connect(SaveQuickMappingClicked)
-        quick_map_box.addWidget(button_quick_save)
-        button_quick_switch = QtWidgets.QPushButton('切換')
-        button_quick_switch.clicked.connect(SwitchQuickMappingClicked)
-        quick_map_box.addWidget(button_quick_switch)
         # 建立水平佈局管理器3
         hbox3 = QtWidgets.QHBoxLayout()
         hbox3.setContentsMargins(0, 0, 0, 0)
