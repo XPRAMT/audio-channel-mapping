@@ -87,7 +87,7 @@ def setDevVol(devName,vol):
     if devName in shared.AllDevS:
         shared.AllDevS[devName]['volume'] = vol
         IP = shared.AllDevS[devName]['IP']
-        if IP:
+        if IP and 'socket' in shared.clients.get(IP, {}):
             # 發送音量到Client
             shared.clients[IP]['volume'] = shared.Header.volume = vol
             shared.to_server.put([IP,'volume',None])

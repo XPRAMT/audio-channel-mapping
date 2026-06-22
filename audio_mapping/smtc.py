@@ -302,8 +302,9 @@ class MediaControlWidget(QtWidgets.QWidget):
 
         # 媒體播放狀態變更時，推送給所有連線客戶端
         if shared.Header.isPlaying != prev_isPlaying:
-            for IP in list(shared.clients.keys()):
-                shared.to_server.put([IP, 'state', None])
+            for IP, client in list(shared.clients.items()):
+                if 'socket' in client:
+                    shared.to_server.put([IP, 'state', None])
 
     def control(self, action):
         '發送控制指令'

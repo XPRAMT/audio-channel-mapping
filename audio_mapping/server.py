@@ -121,7 +121,7 @@ def send_message():
     while True:
         IP, msg_type, data = shared.to_server.get()
         client = shared.clients.get(IP)
-        if not client:
+        if not client or 'socket' not in client:
             continue
         with clients_lock:
             if msg_type == 'state':
