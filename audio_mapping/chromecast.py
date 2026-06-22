@@ -30,6 +30,13 @@ _http_thread = None
 _http_lock = threading.Lock()
 
 
+def get_zconf():
+    global _zconf
+    if getattr(_zconf, "done", False):
+        _zconf = Zeroconf()
+    return _zconf
+
+
 def choose_sample_rate(source_rate):
     source_rate = int(source_rate)
     if source_rate in SUPPORTED_SAMPLE_RATES:
@@ -49,7 +56,7 @@ def stream_path(dev_id):
 
 def read_device_volume(cast_info, fallback=1.0):
     try:
-        cast = pychromecast.Chromecast(cast_info, zconf=_zconf)
+        cast = pychromecast.Chromecast(cast_info, zconf=get_zconf())
         cast.wait(timeout=5)
         status = cast.status
         volume = getattr(status, "volume_level", None)
@@ -64,7 +71,7 @@ def read_device_volume(cast_info, fallback=1.0):
 
 def set_device_volume(cast_info, volume):
     try:
-        cast = pychromecast.Chromecast(cast_info, zconf=_zconf)
+        cast = pychromecast.Chromecast(cast_info, zconf=get_zconf())
         cast.wait(timeout=5)
         cast.set_volume(max(0.0, min(1.0, float(volume))))
         cast.disconnect()
@@ -197,7 +204,7 @@ class ChromecastStream:
         if self.started:
             return
         ensure_http_server()
-        self.cast = pychromecast.Chromecast(self.cast_info, zconf=_zconf)
+        self.cast = pychromecast.Chromecast(self.cast_info, zconf=get_zconf())
         self.cast.wait(timeout=10)
         local_ip = local_ip_for_target(self.cast_info.host)
         port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
@@ -334,13 +341,14 @@ def update_discovered_devices(devices):
 def discover_once(timeout=5):
     devices, browser = pychromecast.discovery.discover_chromecasts(
         timeout=timeout,
-        zeroconf_instance=_zconf,
+        zeroconf_instance=get_zconf(),
     )
     try:
         update_discovered_devices(devices)
         print(f"[Chromecast] found {len(devices)} device(s)")
     finally:
         browser.stop_discovery()
+        get_zconf()
 
 
 def discovery_loop():
