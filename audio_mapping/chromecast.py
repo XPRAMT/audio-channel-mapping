@@ -250,6 +250,7 @@ class ChromecastStream:
         self.started = False
         self.play_thread = None
         self.logged_first_audio = False
+        self._last_session_check = 0
 
     def start(self):
         if self.started:
@@ -307,6 +308,23 @@ class ChromecastStream:
         if not self.logged_first_audio:
             self.logged_first_audio = True
             log(f"first mapped audio {len(data)} bytes")
+        # 檢查 Chromecast session 是否 IDLE，若是則重新 play_media
+        now = time.time()
+        if now - self._last_session_check > 2 and self.cast:
+            self._last_session_check = now
+            try:
+                state = self.cast.media_controller.status.player_state
+                if state == "IDLE":
+                    log(f"session idle on publish, reloading")
+                    local_ip = local_ip_for_target(self.cast_info.host)
+                    port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+                    url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
+                    self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
+                    self.cast.media_controller.block_until_active(timeout=3)
+                    self.cast.media_controller.play()
+                    log(f"session reloaded on publish")
+            except Exception:
+                pass
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm24(data))
 
