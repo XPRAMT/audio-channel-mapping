@@ -150,8 +150,7 @@ class PcmBroadcaster:
         self.clients = set()
         self.lock = threading.Lock()
         self.closed = False
-        self.header_cache = bytearray()
-        self.header_cache_limit = 65536
+        self.header = b""
 
     def add_client(self):
         client_queue = queue.Queue(maxsize=HTTP_CLIENT_QUEUE_SIZE)
@@ -160,8 +159,8 @@ class PcmBroadcaster:
                 client_queue.put_nowait(None)
             else:
                 self.clients.add(client_queue)
-                if self.header_cache:
-                    client_queue.put_nowait(bytes(self.header_cache))
+                if self.header:
+                    client_queue.put_nowait(self.header)
         return client_queue
 
     def remove_client(self, client_queue):
@@ -170,9 +169,6 @@ class PcmBroadcaster:
 
     def publish(self, data):
         with self.lock:
-            if len(self.header_cache) < self.header_cache_limit:
-                remaining = self.header_cache_limit - len(self.header_cache)
-                self.header_cache.extend(data[:remaining])
             clients = list(self.clients)
         for client_queue in clients:
             while True:
@@ -206,6 +202,10 @@ class PcmBroadcaster:
             except queue.Full:
                 pass
 
+    def set_header(self, header):
+        with self.lock:
+            self.header = header
+
 
 class ChromecastStream:
     def __init__(self, dev_id, cast_info, sample_rate):
@@ -222,6 +222,8 @@ class ChromecastStream:
         if self.started:
             return
         ensure_http_server()
+        self.broadcaster.close()
+        self.broadcaster = PcmBroadcaster()
         self.header_sent = False
         self.broadcaster.clear_audio_backlog()
         self.started = True
@@ -258,7 +260,9 @@ class ChromecastStream:
 
     def publish_audio(self, data):
         if not self.header_sent:
-            self.broadcaster.publish(make_wav_header(self.sample_rate))
+            header = make_wav_header(self.sample_rate)
+            self.broadcaster.set_header(header)
+            self.broadcaster.publish(header)
             self.header_sent = True
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm16(data))
