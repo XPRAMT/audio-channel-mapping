@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation>시스템 기본값</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation>프리셋</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation>저장할 매핑이 없습니다</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation>지워짐</translation>
+    </message>
   </context>
 </TS>

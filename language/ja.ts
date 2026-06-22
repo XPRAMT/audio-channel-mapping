@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation>システムデフォルト</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation>プリセット</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation>保存するマッピングがありません</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation>クリア済み</translation>
+    </message>
   </context>
 </TS>

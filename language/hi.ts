@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation>सिस्टम डिफ़ॉल्ट</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation>प्रीसेट</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation>सहेजने के लिए कोई मैपिंग नहीं</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation>साफ़ किया गया</translation>
+    </message>
   </context>
 </TS>

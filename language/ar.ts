@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation>إعدادات النظام الافتراضية</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation>الإعداد المسبق</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation>لا يوجد تخطيط للحفظ</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation>تم المسح</translation>
+    </message>
   </context>
 </TS>

@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation>系统默认</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation>预设方案</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation>无映射可保存</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation>已清除</translation>
+    </message>
   </context>
 </TS>

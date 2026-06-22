@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation type="unfinished" />
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation type="unfinished" />
+    </message>
   </context>
 </TS>

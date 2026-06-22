@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation>সিস্টেম ডিফল্ট</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation>প্রিসেট</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation>সংরক্ষণ করার মতো কোনো ম্যাপিং নেই</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation>সাফ করা হয়েছে</translation>
+    </message>
   </context>
 </TS>

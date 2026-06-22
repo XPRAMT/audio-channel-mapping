@@ -108,5 +108,20 @@
       <source>System Default</source>
       <translation>Predeterminado del sistema</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="399" />
+      <source>Preset</source>
+      <translation>Preajuste</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="423" />
+      <source>No mapping to save</source>
+      <translation>No hay mapeo para guardar</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="451" />
+      <source>Cleared</source>
+      <translation>Limpiado</translation>
+    </message>
   </context>
 </TS>
