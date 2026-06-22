@@ -402,9 +402,11 @@ def update_preset_highlight():
     '更新方案按鈕高亮'
     for i, btn in enumerate(presetButtons):
         if i == presetIndex:
-            btn.setStyleSheet('font-weight: bold; color: yellow;')
+            btn.setStyleSheet('font-weight: bold; background-color: #4a90d9; color: white;')
         else:
             btn.setStyleSheet('')
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
 
 def MappingClicked():
     '開始/停止按鈕'
