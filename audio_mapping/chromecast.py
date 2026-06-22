@@ -250,6 +250,7 @@ class ChromecastStream:
         self.play_thread = None
         self._pending_play = True
         self._last_audio_time = 0
+        self.logged_first_audio = False
 
     def start(self):
         if self.started:
@@ -260,6 +261,7 @@ class ChromecastStream:
         self.broadcaster.dev_id = self.dev_id
         self.header_sent = False
         self._pending_play = True
+        self.logged_first_audio = False
         self.broadcaster.clear_audio_backlog()
         header = make_wav_header(self.sample_rate)
         self.broadcaster.set_header(header)
@@ -326,7 +328,9 @@ class ChromecastStream:
         self._last_audio_time = time.time()
         self.broadcaster.clear_audio_backlog()
         pcm_data = float32_to_pcm24(data)
-        log(f"audio published {len(pcm_data)} bytes")
+        if not self.logged_first_audio:
+            self.logged_first_audio = True
+            log(f"first mapped audio {len(pcm_data)} bytes")
         self.broadcaster.publish(pcm_data)
         if self._pending_play:
             if self.cast:
