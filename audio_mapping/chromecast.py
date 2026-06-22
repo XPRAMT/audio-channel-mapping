@@ -174,7 +174,9 @@ class PcmBroadcaster:
         self.lock = threading.Lock()
         self.closed = False
         self.header = b""
-        self.logged_first_publish = False
+        self.packet_count = 0
+        self.packet_size = 0
+        self.dev_id = "unknown"
 
     def add_client(self):
         client_queue = queue.Queue(maxsize=HTTP_CLIENT_QUEUE_SIZE)
@@ -192,9 +194,10 @@ class PcmBroadcaster:
             self.clients.discard(client_queue)
 
     def publish(self, data):
-        if not self.logged_first_publish:
-            self.logged_first_publish = True
-            log(f"first broadcaster publish {len(data)} bytes")
+        self.packet_count += 1
+        self.packet_size = len(data)
+        if self.packet_count % 100 == 0:
+            log(f"output {self.packet_count} packets last size {self.packet_size} bytes")
         with self.lock:
             clients = list(self.clients)
         for client_queue in clients:
@@ -240,6 +243,7 @@ class ChromecastStream:
         self.cast_info = cast_info
         self.sample_rate = sample_rate
         self.broadcaster = PcmBroadcaster()
+        self.broadcaster.dev_id = dev_id
         self.cast = None
         self.header_sent = False
         self.started = False
@@ -252,9 +256,18 @@ class ChromecastStream:
         ensure_http_server()
         self.broadcaster.close()
         self.broadcaster = PcmBroadcaster()
+        self.broadcaster.dev_id = self.dev_id
         self.header_sent = False
         self.logged_first_audio = False
         self.broadcaster.clear_audio_backlog()
+        # Feed WAV header + silence immediately so HTTP clients get data instantly
+        silence_seconds = 2
+        silence_frames = int(self.sample_rate * silence_seconds)
+        header = make_wav_header(self.sample_rate)
+        silence_data = b"\x00" * (silence_frames * 2 * CHROMECAST_BYTE_PER_SAMPLE)
+        self.broadcaster.set_header(header)
+        self.broadcaster.publish(header + silence_data)
+        self.header_sent = True
         self.started = True
         log(f"stream ready {self.cast_info.friendly_name} {self.sample_rate}Hz")
         self.play_thread = threading.Thread(target=self._connect_and_play, daemon=True)
@@ -294,11 +307,6 @@ class ChromecastStream:
         if not self.logged_first_audio:
             self.logged_first_audio = True
             log(f"first mapped audio {len(data)} bytes")
-        if not self.header_sent:
-            header = make_wav_header(self.sample_rate)
-            self.broadcaster.set_header(header)
-            self.broadcaster.publish(header)
-            self.header_sent = True
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm24(data))
 
