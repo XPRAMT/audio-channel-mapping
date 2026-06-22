@@ -17,6 +17,7 @@ SUPPORTED_SAMPLE_RATES = (44100, 48000, 88200, 96000)
 DISCOVERY_INTERVAL = 30
 VOLUME_SYNC_INTERVAL = 1
 VOLUME_EPSILON = 0.005
+HTTP_CLIENT_QUEUE_SIZE = 8
 
 _browser = None
 _cast_infos = {}
@@ -117,7 +118,7 @@ class PcmBroadcaster:
         self.header_cache_limit = 65536
 
     def add_client(self):
-        client_queue = queue.Queue(maxsize=256)
+        client_queue = queue.Queue(maxsize=HTTP_CLIENT_QUEUE_SIZE)
         with self.lock:
             if self.closed:
                 client_queue.put_nowait(None)
@@ -138,14 +139,25 @@ class PcmBroadcaster:
                 self.header_cache.extend(data[:remaining])
             clients = list(self.clients)
         for client_queue in clients:
-            try:
-                client_queue.put_nowait(data)
-            except queue.Full:
+            while True:
+                try:
+                    client_queue.put_nowait(data)
+                    break
+                except queue.Full:
+                    try:
+                        client_queue.get_nowait()
+                    except queue.Empty:
+                        break
+
+    def clear_audio_backlog(self):
+        with self.lock:
+            clients = list(self.clients)
+        for client_queue in clients:
+            while client_queue.qsize() > 1:
                 try:
                     client_queue.get_nowait()
-                    client_queue.put_nowait(data)
                 except queue.Empty:
-                    pass
+                    break
 
     def close(self):
         with self.lock:
@@ -214,6 +226,7 @@ class ChromecastStream:
         if not self.header_sent:
             self.broadcaster.publish(make_wav_header(self.sample_rate))
             self.header_sent = True
+        self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm16(data))
 
     def stop(self):
@@ -353,9 +366,7 @@ def sender_loop():
                 print(f"[Chromecast] start error: {error}")
         elif action == "audio":
             _, dev_id, data = command
-            stream = _streams.get(dev_id)
-            if stream and stream.started:
-                stream.publish_audio(data)
+            publish_audio(dev_id, data)
         elif action == "volume":
             _, dev_id, volume = command
             update_client_volume(dev_id, volume, notify_gui=False)
@@ -381,6 +392,12 @@ def start_chromecast():
     threading.Thread(target=sender_loop, daemon=True).start()
     threading.Thread(target=discovery_loop, daemon=True).start()
     threading.Thread(target=volume_sync_loop, daemon=True).start()
+
+
+def publish_audio(dev_id, data):
+    stream = _streams.get(dev_id)
+    if stream and stream.started:
+        stream.publish_audio(data)
 
 
 def volume_sync_loop():

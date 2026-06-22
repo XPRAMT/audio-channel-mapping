@@ -99,7 +99,7 @@ class Mapping():
                                 while Queue.qsize() > delay+1:
                                     Queue.get_nowait()
                             outdata_bytes = self.OutputProcesse(devName,Queue.get(),CHUNKFix,CH_num).tobytes()
-                            shared.to_chromecast.put(['audio', devName, outdata_bytes])
+                            chromecast.publish_audio(devName, outdata_bytes)
             #if openrgb.Start:
             #    openrgb.RGBQueue.put(indata)
                         
