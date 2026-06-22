@@ -35,6 +35,19 @@ _zconf = Zeroconf()
 _http_server = None
 _http_thread = None
 _http_lock = threading.Lock()
+_last_log_time = None
+_log_lock = threading.Lock()
+
+
+def log(message):
+    global _last_log_time
+    now = time.perf_counter()
+    local_time = time.localtime()
+    ms = int((time.time() % 1) * 1000)
+    with _log_lock:
+        delta_ms = 0 if _last_log_time is None else int((now - _last_log_time) * 1000)
+        _last_log_time = now
+    print(f"[Chromecast][{time.strftime('%H:%M:%S', local_time)}.{ms:03d}][+{delta_ms}ms] {message}")
 
 
 def get_zconf():
@@ -72,7 +85,7 @@ def read_device_volume(cast_info, fallback=1.0):
             return fallback
         return max(0.0, min(1.0, float(volume)))
     except Exception as error:
-        print(f"[Chromecast] read volume error: {error}")
+        log(f"read volume error: {error}")
         return fallback
 
 
@@ -83,7 +96,7 @@ def set_device_volume(cast_info, volume):
         cast.set_volume(max(0.0, min(1.0, float(volume))))
         cast.disconnect()
     except Exception as error:
-        print(f"[Chromecast] set device volume error: {error}")
+        log(f"set device volume error: {error}")
 
 
 def read_stream_volume(stream, fallback=1.0):
@@ -94,7 +107,7 @@ def read_stream_volume(stream, fallback=1.0):
             return fallback
         return max(0.0, min(1.0, float(volume)))
     except Exception as error:
-        print(f"[Chromecast] sync volume error: {error}")
+        log(f"sync volume error: {error}")
         return fallback
 
 
@@ -161,6 +174,7 @@ class PcmBroadcaster:
         self.lock = threading.Lock()
         self.closed = False
         self.header = b""
+        self.logged_first_publish = False
 
     def add_client(self):
         client_queue = queue.Queue(maxsize=HTTP_CLIENT_QUEUE_SIZE)
@@ -178,6 +192,9 @@ class PcmBroadcaster:
             self.clients.discard(client_queue)
 
     def publish(self, data):
+        if not self.logged_first_publish:
+            self.logged_first_publish = True
+            log(f"first broadcaster publish {len(data)} bytes")
         with self.lock:
             clients = list(self.clients)
         for client_queue in clients:
@@ -227,6 +244,7 @@ class ChromecastStream:
         self.header_sent = False
         self.started = False
         self.play_thread = None
+        self.logged_first_audio = False
 
     def start(self):
         if self.started:
@@ -235,15 +253,19 @@ class ChromecastStream:
         self.broadcaster.close()
         self.broadcaster = PcmBroadcaster()
         self.header_sent = False
+        self.logged_first_audio = False
         self.broadcaster.clear_audio_backlog()
         self.started = True
+        log(f"stream ready {self.cast_info.friendly_name} {self.sample_rate}Hz")
         self.play_thread = threading.Thread(target=self._connect_and_play, daemon=True)
         self.play_thread.start()
 
     def _connect_and_play(self):
         try:
+            log(f"connect start {self.cast_info.friendly_name}")
             cast = pychromecast.Chromecast(self.cast_info, zconf=get_zconf())
             cast.wait(timeout=CAST_WAIT_TIMEOUT)
+            log(f"cast wait done {self.cast_info.friendly_name}")
             self.cast = cast
             local_ip = local_ip_for_target(self.cast_info.host)
             port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
@@ -256,9 +278,9 @@ class ChromecastStream:
                 stream_type="LIVE",
                 autoplay=True,
             )
-            print(f"[Chromecast] start {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
+            log(f"play_media sent {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
         except Exception as error:
-            print(f"[Chromecast] connect/play error: {error}")
+            log(f"connect/play error: {error}")
 
     def set_volume(self, volume):
         if not self.cast:
@@ -266,9 +288,12 @@ class ChromecastStream:
         try:
             self.cast.set_volume(max(0.0, min(1.0, float(volume))))
         except Exception as error:
-            print(f"[Chromecast] volume error: {error}")
+            log(f"volume error: {error}")
 
     def publish_audio(self, data):
+        if not self.logged_first_audio:
+            self.logged_first_audio = True
+            log(f"first mapped audio {len(data)} bytes")
         if not self.header_sent:
             header = make_wav_header(self.sample_rate)
             self.broadcaster.set_header(header)
@@ -282,7 +307,7 @@ class ChromecastStream:
             if self.cast:
                 self.cast.media_controller.stop()
         except Exception as error:
-            print(f"[Chromecast] stop error: {error}")
+            log(f"stop error: {error}")
         self.broadcaster.close()
         self.started = False
         self.header_sent = False
@@ -311,6 +336,7 @@ def ensure_http_server():
                 if not stream:
                     self.send_error(404)
                     return
+                log(f"HTTP GET {self.path}")
                 client_queue = stream.broadcaster.add_client()
                 self.send_response(200)
                 self.send_header("Content-Type", CONTENT_TYPE)
@@ -319,10 +345,14 @@ def ensure_http_server():
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 try:
+                    logged_first_write = False
                     while True:
                         chunk = client_queue.get()
                         if chunk is None:
                             break
+                        if not logged_first_write:
+                            logged_first_write = True
+                            log(f"HTTP first write {len(chunk)} bytes")
                         self.wfile.write(chunk)
                         self.wfile.flush()
                 except (ConnectionError, BrokenPipeError, OSError):
@@ -333,7 +363,7 @@ def ensure_http_server():
         _http_server = ThreadingHTTPServer(("", port), Handler)
         _http_thread = threading.Thread(target=_http_server.serve_forever, daemon=True)
         _http_thread.start()
-        print(f"[Chromecast] HTTP server started on port {port}")
+        log(f"HTTP server started on port {port}")
 
 
 def update_discovered_devices(devices):
@@ -383,7 +413,7 @@ def discover_once(timeout=5):
     devices, browser = pychromecast.discovery.discover_chromecasts(timeout=timeout)
     try:
         if update_discovered_devices(devices):
-            print(f"[Chromecast] found {len(devices)} device(s)")
+            log(f"found {len(devices)} device(s)")
     finally:
         browser.stop_discovery()
         get_zconf()
@@ -394,7 +424,7 @@ def discovery_loop():
         try:
             discover_once()
         except Exception as error:
-            print(f"[Chromecast] discovery error: {error}")
+            log(f"discovery error: {error}")
         time.sleep(DISCOVERY_INTERVAL)
 
 
@@ -406,8 +436,9 @@ def sender_loop():
             _, dev_id, sample_rate = command
             cast_info = _cast_infos.get(dev_id)
             if not cast_info:
-                print(f"[Chromecast] missing cast info: {dev_id}")
+                log(f"missing cast info: {dev_id}")
                 continue
+            log(f"start request {dev_id} {sample_rate}Hz")
             stream = _streams.get(dev_id)
             if stream and stream.sample_rate != sample_rate:
                 stream.stop()
@@ -420,7 +451,7 @@ def sender_loop():
                 stream.start()
                 _pending_audio.pop(dev_id, None)
             except Exception as error:
-                print(f"[Chromecast] start error: {error}")
+                log(f"start error: {error}")
         elif action == "audio":
             _, dev_id, data = command
             publish_audio(dev_id, data)
@@ -472,7 +503,7 @@ def volume_sender_loop():
                 send_volume_now(dev_id, volume)
                 _volume_next_send_at[dev_id] = now + VOLUME_SYNC_INTERVAL
         except Exception as error:
-            print(f"[Chromecast] volume sender loop error: {error}")
+            log(f"volume sender loop error: {error}")
         time.sleep(VOLUME_SYNC_INTERVAL)
 
 
@@ -495,5 +526,5 @@ def volume_sync_loop():
                     volume = read_device_volume(cast_info, fallback)
                 update_client_volume(dev_id, volume)
         except Exception as error:
-            print(f"[Chromecast] volume sync loop error: {error}")
+            log(f"volume sync loop error: {error}")
         time.sleep(VOLUME_SYNC_INTERVAL)
