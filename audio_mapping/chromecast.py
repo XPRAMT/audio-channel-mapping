@@ -299,12 +299,14 @@ class ChromecastStream:
                     try:
                         gap = time.time() - self._last_audio_time
                         if gap > 5:
-                            silence_frame = b"\x00" * (self.sample_rate // 100 * 2 * CHROMECAST_BYTE_PER_SAMPLE)  # 10ms silence
+                            silence_frame = b"\x00" * (self.sample_rate // 10 * 2 * CHROMECAST_BYTE_PER_SAMPLE)  # 100ms silence
                             self.broadcaster.publish(silence_frame)
                         self.cast.media_controller.play()
                     except Exception:
                         pass
             threading.Thread(target=keep_playing, daemon=True).start()
+        except Exception as error:
+            log(f"connect/play error: {error}")
         except Exception as error:
             log(f"connect/play error: {error}")
 
