@@ -289,30 +289,29 @@ class ChromecastStream:
                 autoplay=True,
             )
             log(f"play_media sent {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
+            log(f"media.is_active: {media.is_active}")
             media.block_until_active(timeout=3)
+            log(f"media.is_active: {media.is_active}")
             media.play()
             log(f"media play sent")
-            # 每 5 秒檢查音訊中斷超過 30 秒則重新 play_media
+            # 音訊中斷超過 30 秒則重新 play_media
             def keep_playing():
                 while self.started and self.cast:
                     time.sleep(30)
                     try:
                         gap = time.time() - self._last_audio_time
-                        if gap <= 30:
-                            continue
-                        log(f"audio gap={gap:.1f}s, reloading")
-                        local_ip = local_ip_for_target(self.cast_info.host)
-                        port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
-                        url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
-                        self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
-                        self.cast.media_controller.block_until_active(timeout=3)
+                        if gap > 30:
+                            log(f"audio gap={gap:.1f}s, reloading")
+                            local_ip = local_ip_for_target(self.cast_info.host)
+                            port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+                            url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
+                            self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
+                            self.cast.media_controller.block_until_active(timeout=3)
+                            log(f"reloaded")
                         self.cast.media_controller.play()
-                        log(f"reloaded")
                     except Exception:
                         pass
             threading.Thread(target=keep_playing, daemon=True).start()
-        except Exception as error:
-            log(f"connect/play error: {error}")
         except Exception as error:
             log(f"connect/play error: {error}")
 
