@@ -244,18 +244,6 @@ class ChromecastStream:
         except Exception as error:
             print(f"[Chromecast] volume error: {error}")
 
-    def set_play_state(self, is_playing):
-        if not self.cast:
-            return
-        try:
-            media = self.cast.media_controller
-            if is_playing:
-                media.play()
-            else:
-                media.pause()
-        except Exception as error:
-            print(f"[Chromecast] play state error: {error}")
-
     def publish_audio(self, data):
         if not self.header_sent:
             self.broadcaster.publish(make_wav_header(self.sample_rate))
@@ -422,10 +410,6 @@ def sender_loop():
                 _pending_volumes.pop(dev_id, None)
             else:
                 _pending_volumes[dev_id] = volume
-        elif action == "play_state":
-            _, is_playing = command
-            for stream in list(_streams.values()):
-                stream.set_play_state(is_playing)
         elif action == "stop":
             _, dev_id = command
             stream = _streams.pop(dev_id, None)
