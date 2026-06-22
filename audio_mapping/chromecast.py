@@ -15,6 +15,8 @@ STREAM_PATH_PREFIX = "/chromecast"
 CONTENT_TYPE = "audio/wav"
 SUPPORTED_SAMPLE_RATES = (44100, 48000, 88200, 96000)
 DISCOVERY_INTERVAL = 30
+VOLUME_SYNC_INTERVAL = 1
+VOLUME_EPSILON = 0.005
 
 _browser = None
 _cast_infos = {}
@@ -55,6 +57,33 @@ def read_device_volume(cast_info, fallback=1.0):
     except Exception as error:
         print(f"[Chromecast] read volume error: {error}")
         return fallback
+
+
+def read_stream_volume(stream, fallback=1.0):
+    try:
+        status = stream.cast.status if stream and stream.cast else None
+        volume = getattr(status, "volume_level", None)
+        if volume is None:
+            return fallback
+        return max(0.0, min(1.0, float(volume)))
+    except Exception as error:
+        print(f"[Chromecast] sync volume error: {error}")
+        return fallback
+
+
+def update_client_volume(dev_id, volume, notify_gui=True):
+    client = shared.clients.get(dev_id)
+    if not client:
+        return
+    old_volume = float(client.get("volume", 1.0))
+    if abs(old_volume - volume) < VOLUME_EPSILON:
+        return
+    client["volume"] = volume
+    if dev_id in shared.AllDevS:
+        shared.AllDevS[dev_id]["volume"] = volume
+    if notify_gui:
+        shared.to_GUI.put([4, [dev_id, volume]])
+        shared.VolChanger = dev_id
 
 
 def make_wav_header(sample_rate, channels=2, byte_per_sample=2):
@@ -329,9 +358,7 @@ def sender_loop():
                 stream.publish_audio(data)
         elif action == "volume":
             _, dev_id, volume = command
-            client = shared.clients.get(dev_id)
-            if client:
-                client["volume"] = volume
+            update_client_volume(dev_id, volume, notify_gui=False)
             stream = _streams.get(dev_id)
             if stream:
                 stream.set_volume(volume)
@@ -353,3 +380,25 @@ def sender_loop():
 def start_chromecast():
     threading.Thread(target=sender_loop, daemon=True).start()
     threading.Thread(target=discovery_loop, daemon=True).start()
+    threading.Thread(target=volume_sync_loop, daemon=True).start()
+
+
+def volume_sync_loop():
+    while True:
+        try:
+            for dev_id, client in list(shared.clients.items()):
+                if client.get("type") != "chromecast":
+                    continue
+                fallback = float(client.get("volume", 1.0))
+                stream = _streams.get(dev_id)
+                if stream and stream.started:
+                    volume = read_stream_volume(stream, fallback)
+                else:
+                    cast_info = _cast_infos.get(dev_id)
+                    if not cast_info:
+                        continue
+                    volume = read_device_volume(cast_info, fallback)
+                update_client_volume(dev_id, volume)
+        except Exception as error:
+            print(f"[Chromecast] volume sync loop error: {error}")
+        time.sleep(VOLUME_SYNC_INTERVAL)
