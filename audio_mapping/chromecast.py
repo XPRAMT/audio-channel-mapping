@@ -298,26 +298,6 @@ class ChromecastStream:
             log(f"media.is_active: {media.is_active}")
             self._session_ready = True
             log(f"session ready")
-            # 每 30 秒檢查：音訊中斷超過 30 秒則重建 session
-            def keep_playing():
-                while self.started and self.cast:
-                    time.sleep(5)
-                    try:
-                        gap = time.time() - self._last_audio_time
-                        if gap > 30:
-                            log(f"audio gap={gap:.1f}s, reloading")
-                            self._last_audio_time = time.time()
-                            local_ip = local_ip_for_target(self.cast_info.host)
-                            port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
-                            url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
-                            self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
-                            self.cast.media_controller.block_until_active(timeout=3)
-                            self._session_ready = True
-                            self._pending_play = True
-                            log(f"reloaded, pending play")
-                    except Exception:
-                        pass
-            threading.Thread(target=keep_playing, daemon=True).start()
         except Exception as error:
             log(f"connect/play error: {error}")
 
@@ -463,13 +443,11 @@ def discover_once(timeout=5):
         get_zconf()
 
 
-def discovery_loop():
-    while True:
-        try:
-            discover_once()
-        except Exception as error:
-            log(f"discovery error: {error}")
-        time.sleep(DISCOVERY_INTERVAL)
+def discovery_tick():
+    try:
+        discover_once()
+    except Exception as error:
+        log(f"discovery error: {error}")
 
 
 def sender_loop():
@@ -531,9 +509,7 @@ def sender_loop():
 
 def start_chromecast():
     threading.Thread(target=sender_loop, daemon=True).start()
-    threading.Thread(target=discovery_loop, daemon=True).start()
-    threading.Thread(target=volume_sender_loop, daemon=True).start()
-    threading.Thread(target=volume_sync_loop, daemon=True).start()
+    threading.Thread(target=chromecast_tick_loop, daemon=True).start()
 
 
 def publish_audio(dev_id, data):
@@ -544,39 +520,68 @@ def publish_audio(dev_id, data):
         _pending_audio[dev_id] = data
 
 
-def volume_sender_loop():
-    while True:
-        try:
-            now = time.time()
-            for dev_id, volume in list(_pending_volumes.items()):
-                if now < _volume_next_send_at.get(dev_id, 0):
-                    continue
-                _pending_volumes.pop(dev_id, None)
-                send_volume_now(dev_id, volume)
-                _volume_next_send_at[dev_id] = now + VOLUME_SYNC_INTERVAL
-        except Exception as error:
-            log(f"volume sender loop error: {error}")
-        time.sleep(VOLUME_SYNC_INTERVAL)
+def volume_sender_tick():
+    try:
+        now = time.time()
+        for dev_id, volume in list(_pending_volumes.items()):
+            if now < _volume_next_send_at.get(dev_id, 0):
+                continue
+            _pending_volumes.pop(dev_id, None)
+            send_volume_now(dev_id, volume)
+            _volume_next_send_at[dev_id] = now + VOLUME_SYNC_INTERVAL
+    except Exception as error:
+        log(f"volume sender tick error: {error}")
 
 
-def volume_sync_loop():
+def volume_sync_tick():
+    try:
+        for dev_id, client in list(shared.clients.items()):
+            if client.get("type") != "chromecast":
+                continue
+            if time.time() < _volume_set_suppress_until.get(dev_id, 0):
+                continue
+            fallback = float(client.get("volume", 1.0))
+            stream = _streams.get(dev_id)
+            if stream and stream.started:
+                volume = read_stream_volume(stream, fallback)
+            else:
+                cast_info = _cast_infos.get(dev_id)
+                if not cast_info:
+                    continue
+                volume = read_device_volume(cast_info, fallback)
+            update_client_volume(dev_id, volume)
+    except Exception as error:
+        log(f"volume sync tick error: {error}")
+
+
+def gap_check_tick():
+    try:
+        for dev_id, stream in list(_streams.items()):
+            if not stream.started or not stream.cast:
+                continue
+            gap = time.time() - stream._last_audio_time
+            if gap > 30:
+                log(f"audio gap={gap:.1f}s, reloading {dev_id}")
+                stream._last_audio_time = time.time()
+                local_ip = local_ip_for_target(stream.cast_info.host)
+                port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+                url = f"http://{local_ip}:{port}{stream_path(dev_id)}"
+                stream.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
+                stream.cast.media_controller.block_until_active(timeout=3)
+                stream._session_ready = True
+                stream._pending_play = True
+                log(f"reloaded {dev_id}, pending play")
+    except Exception as error:
+        log(f"gap check tick error: {error}")
+
+
+def chromecast_tick_loop():
+    tick = 0
     while True:
-        try:
-            for dev_id, client in list(shared.clients.items()):
-                if client.get("type") != "chromecast":
-                    continue
-                if time.time() < _volume_set_suppress_until.get(dev_id, 0):
-                    continue
-                fallback = float(client.get("volume", 1.0))
-                stream = _streams.get(dev_id)
-                if stream and stream.started:
-                    volume = read_stream_volume(stream, fallback)
-                else:
-                    cast_info = _cast_infos.get(dev_id)
-                    if not cast_info:
-                        continue
-                    volume = read_device_volume(cast_info, fallback)
-                update_client_volume(dev_id, volume)
-        except Exception as error:
-            log(f"volume sync loop error: {error}")
-        time.sleep(VOLUME_SYNC_INTERVAL)
+        tick += 1
+        volume_sender_tick()
+        volume_sync_tick()
+        gap_check_tick()
+        if tick % 6 == 0:
+            discovery_tick()
+        time.sleep(0.5)
