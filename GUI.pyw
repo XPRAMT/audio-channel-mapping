@@ -727,8 +727,9 @@ class main_window(QtWidgets.QWidget):
         Grid_btn.addWidget(button_mapping,1,2)
         # 建立方案快捷鍵
         presetButtons = []
+        presetEmojis = ['1️⃣', '2️⃣', '3️⃣']
         for i in range(3):
-            btn = QtWidgets.QPushButton(f'{i+1}\ufe0f\u20e3')
+            btn = QtWidgets.QPushButton(presetEmojis[i])
             btn.clicked.connect(partial(SelectPresetClicked, i))
             Grid_btn.addWidget(btn, 2, i)
             presetButtons.append(btn)
