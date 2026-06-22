@@ -197,7 +197,8 @@ class PcmBroadcaster:
         self.packet_count += 1
         self.packet_size = len(data)
         if self.packet_count % 100 == 0:
-            log(f"output {self.packet_count} packets last size {self.packet_size} bytes")
+            name = shared.clients.get(self.dev_id, {}).get('name', self.dev_id)
+            log(f"{name} {self.packet_count}")
         with self.lock:
             clients = list(self.clients)
         for client_queue in clients:
