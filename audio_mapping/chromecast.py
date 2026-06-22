@@ -31,6 +31,7 @@ _pending_volumes = {}
 _discovery_misses = {}
 _volume_next_send_at = {}
 _pending_audio = {}
+_smtc_states = {}  # dev_id -> previous player_state
 _zconf = Zeroconf()
 _http_server = None
 _http_thread = None
@@ -489,6 +490,7 @@ def start_chromecast():
     threading.Thread(target=discovery_loop, daemon=True).start()
     threading.Thread(target=volume_sender_loop, daemon=True).start()
     threading.Thread(target=volume_sync_loop, daemon=True).start()
+    threading.Thread(target=chromecast_smtc_loop, daemon=True).start()
 
 
 def publish_audio(dev_id, data):
@@ -535,3 +537,29 @@ def volume_sync_loop():
         except Exception as error:
             log(f"volume sync loop error: {error}")
         time.sleep(VOLUME_SYNC_INTERVAL)
+
+
+def chromecast_smtc_loop():
+    """Monitor Chromecast playback state and forward play/pause to SMTC."""
+    while True:
+        try:
+            for dev_id, stream in list(_streams.items()):
+                if not stream.started or not stream.cast:
+                    continue
+                try:
+                    status = stream.cast.media_controller.status
+                    state = getattr(status, "player_state", None)
+                except Exception:
+                    continue
+                if not state:
+                    continue
+                prev = _smtc_states.get(dev_id)
+                if prev is not None and prev != state:
+                    if (prev == "PLAYING" and state in ("PAUSED", "IDLE")) or \
+                       (state == "PLAYING" and prev in ("PAUSED", "IDLE")):
+                        log(f"smtc play/pause state {prev} -> {state}")
+                        shared.to_GUI.put([6, 'play/pause'])
+                _smtc_states[dev_id] = state
+        except Exception as error:
+            log(f"smtc loop error: {error}")
+        time.sleep(0.5)
