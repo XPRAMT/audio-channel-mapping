@@ -299,7 +299,7 @@ class ChromecastStream:
                     time.sleep(30)
                     try:
                         gap = time.time() - self._last_audio_time
-                        if gap > 30:
+                        if gap > 29:
                             log(f"audio gap={gap:.1f}s, reloading")
                             local_ip = local_ip_for_target(self.cast_info.host)
                             port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
@@ -325,10 +325,13 @@ class ChromecastStream:
     def publish_audio(self, data):
         self._last_audio_time = time.time()
         if self._pending_play:
-            self._pending_play = False
             if self.cast:
+                self._pending_play = False
                 self.cast.media_controller.play()
                 log(f"play sent")
+            else:
+                shared.to_chromecast.put(["play", self.dev_id])
+                log(f"play queued")
         self.broadcaster.clear_audio_backlog()
         self.broadcaster.publish(float32_to_pcm24(data))
 
@@ -508,6 +511,14 @@ def sender_loop():
                 _pending_volumes.pop(dev_id, None)
             else:
                 _pending_volumes[dev_id] = volume
+        elif action == "play":
+            _, dev_id = command
+            stream = _streams.get(dev_id)
+            if stream and stream.cast:
+                if stream._pending_play:
+                    stream._pending_play = False
+                stream.cast.media_controller.play()
+                log(f"play sent (from queue)")
         elif action == "stop":
             _, dev_id = command
             stream = _streams.pop(dev_id, None)
