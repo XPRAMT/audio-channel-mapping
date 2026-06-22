@@ -62,6 +62,7 @@ class ChromecastSMTCListener(MediaStatusListener):
     def __init__(self, dev_id):
         self.dev_id = dev_id
         self._prev_state = None
+        self._last_signal = 0
 
     def new_media_status(self, status):
         stream = _streams.get(self.dev_id)
@@ -71,10 +72,12 @@ class ChromecastSMTCListener(MediaStatusListener):
         prev = self._prev_state
         self._prev_state = state
         if prev is not None and prev != state:
-            if (prev == "PLAYING" and state in ("PAUSED", "IDLE")) or \
-               (state == "PLAYING" and prev in ("PAUSED", "IDLE")):
-                log(f"smtc {prev} -> {state}")
-                shared.to_GUI.put([6, 'play/pause'])
+            now = time.time()
+            if now - self._last_signal < 0.5:
+                return
+            self._last_signal = now
+            log(f"smtc {prev} -> {state}")
+            shared.to_GUI.put([6, 'play/pause'])
 
     def load_media_failed(self, item, error_code):
         pass
