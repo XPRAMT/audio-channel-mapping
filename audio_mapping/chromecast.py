@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import numpy as np
 import pychromecast
+from pychromecast.controllers.media import MediaStatusListener
 from zeroconf import Zeroconf
 
 from . import shared
@@ -31,7 +32,6 @@ _pending_volumes = {}
 _discovery_misses = {}
 _volume_next_send_at = {}
 _pending_audio = {}
-_smtc_states = {}
 _zconf = Zeroconf()
 _http_server = None
 _http_thread = None
@@ -56,6 +56,28 @@ def get_zconf():
     if getattr(_zconf, "done", False):
         _zconf = Zeroconf()
     return _zconf
+
+
+class ChromecastSMTCListener(MediaStatusListener):
+    def __init__(self, dev_id):
+        self.dev_id = dev_id
+        self._prev_state = None
+
+    def new_media_status(self, status):
+        stream = _streams.get(self.dev_id)
+        if not stream or not stream._session_ready:
+            return
+        state = status.player_state
+        prev = self._prev_state
+        self._prev_state = state
+        if prev is not None and prev != state:
+            if (prev == "PLAYING" and state in ("PAUSED", "IDLE")) or \
+               (state == "PLAYING" and prev in ("PAUSED", "IDLE")):
+                log(f"smtc {prev} -> {state}")
+                shared.to_GUI.put([6, 'play/pause'])
+
+    def load_media_failed(self, item, error_code):
+        pass
 
 
 def choose_sample_rate(source_rate):
@@ -283,6 +305,7 @@ class ChromecastStream:
             cast.wait(timeout=CAST_WAIT_TIMEOUT)
             log(f"cast wait done {self.cast_info.friendly_name}")
             self.cast = cast
+            cast.media_controller.register_status_listener(ChromecastSMTCListener(self.dev_id))
             local_ip = local_ip_for_target(self.cast_info.host)
             port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
             url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
@@ -577,26 +600,6 @@ def gap_check_tick():
         log(f"gap check tick error: {error}")
 
 
-def smtc_tick():
-    for dev_id, stream in list(_streams.items()):
-        if not stream.started or not stream.cast:
-            continue
-        try:
-            status = stream.cast.media_controller.status
-            state = getattr(status, "player_state", None)
-        except Exception:
-            continue
-        if not state:
-            continue
-        prev = _smtc_states.get(dev_id)
-        if prev is not None and prev != state:
-            if (prev == "PLAYING" and state in ("PAUSED", "IDLE")) or \
-               (state == "PLAYING" and prev in ("PAUSED", "IDLE")):
-                log(f"smtc play/pause {prev} -> {state}")
-                shared.to_GUI.put([6, 'play/pause'])
-        _smtc_states[dev_id] = state
-
-
 def chromecast_tick_loop():
     tick = 0
     while True:
@@ -604,7 +607,6 @@ def chromecast_tick_loop():
         volume_sender_tick()
         volume_sync_tick()
         gap_check_tick()
-        smtc_tick()
         if tick % 6 == 0:
             discovery_tick()
         time.sleep(0.5)
