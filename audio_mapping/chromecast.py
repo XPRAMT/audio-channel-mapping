@@ -28,6 +28,7 @@ _volume_set_suppress_until = {}
 _pending_volumes = {}
 _discovery_misses = {}
 _volume_next_send_at = {}
+_pending_audio = {}
 _zconf = Zeroconf()
 _http_server = None
 _http_thread = None
@@ -402,6 +403,9 @@ def sender_loop():
                 _streams[dev_id] = stream
             try:
                 stream.start()
+                pending_audio = _pending_audio.pop(dev_id, None)
+                if pending_audio:
+                    stream.publish_audio(pending_audio)
             except Exception as error:
                 print(f"[Chromecast] start error: {error}")
         elif action == "audio":
@@ -444,6 +448,8 @@ def publish_audio(dev_id, data):
     stream = _streams.get(dev_id)
     if stream and stream.started:
         stream.publish_audio(data)
+    else:
+        _pending_audio[dev_id] = data
 
 
 def volume_sender_loop():
