@@ -292,20 +292,32 @@ class ChromecastStream:
             media.block_until_active(timeout=3)
             media.play()
             log(f"media play sent")
-            # 每 5 秒重送 play 作為 Chromecast BUFFERING workaround
+            # 每 5 秒檢查音訊是否中斷，中斷則完整重啟 session
             def keep_playing():
                 while self.started and self.cast:
                     time.sleep(5)
                     try:
                         gap = time.time() - self._last_audio_time
-                        if gap > 5:
-                            for _ in range(100):
-                                self.broadcaster.publish(b"\x00" * 5760)
-                            log(f"silence 100 packets sent gap={gap:.1f}s")
+                        if gap <= 5:
+                            continue
+                        log(f"audio gap={gap:.1f}s, reloading session")
+                        for _ in range(100):
+                            self.broadcaster.publish(b"\x00" * 5760)
+                        local_ip = local_ip_for_target(self.cast_info.host)
+                        port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
+                        url = f"http://{local_ip}:{port}{stream_path(self.dev_id)}"
+                        try:
+                            self.cast.media_controller.play_media(url, CONTENT_TYPE, title="Audio Mapping", stream_type="LIVE", autoplay=True)
+                            self.cast.media_controller.block_until_active(timeout=3)
+                        except Exception as e:
+                            log(f"reload error: {e}")
                         self.cast.media_controller.play()
+                        log(f"session reloaded")
                     except Exception:
                         pass
             threading.Thread(target=keep_playing, daemon=True).start()
+        except Exception as error:
+            log(f"connect/play error: {error}")
         except Exception as error:
             log(f"connect/play error: {error}")
 
