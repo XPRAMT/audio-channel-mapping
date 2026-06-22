@@ -288,6 +288,9 @@ class ChromecastStream:
                 autoplay=True,
             )
             log(f"play_media sent {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
+            media.block_until_active(timeout=3)
+            media.play()
+            log(f"media play sent")
         except Exception as error:
             log(f"connect/play error: {error}")
 
