@@ -14,6 +14,7 @@ from . import shared
 HTTP_PORT_OFFSET = 100
 STREAM_PATH_PREFIX = "/chromecast"
 CONTENT_TYPE = "audio/wav"
+CHROMECAST_BYTE_PER_SAMPLE = 3
 SUPPORTED_SAMPLE_RATES = (44100, 48000, 88200, 96000)
 CAST_WAIT_TIMEOUT = 1.5
 DISCOVERY_INTERVAL = 30
@@ -123,26 +124,35 @@ def send_volume_now(dev_id, volume):
             set_device_volume(cast_info, volume)
 
 
-def make_wav_header(sample_rate, channels=2, byte_per_sample=2):
+def make_wav_header(sample_rate, channels=2, byte_per_sample=CHROMECAST_BYTE_PER_SAMPLE):
     data_size = 0xFFFFFFFF
     block_align = channels * byte_per_sample
     byte_rate = sample_rate * block_align
     bits_per_sample = byte_per_sample * 8
+    cb_size = 22
+    fmt_size = 18 + cb_size
+    channel_mask = 3 if channels == 2 else 0
+    pcm_guid = struct.pack("<IHH8s", 1, 0x0000, 0x0010, b"\x80\x00\x00\xaa\x00\x38\x9b\x71")
     return (
         b"RIFF" + struct.pack("<I", data_size) +
         b"WAVEfmt " +
-        struct.pack("<IHHIIHH", 16, 1, channels, sample_rate, byte_rate, block_align, bits_per_sample) +
+        struct.pack("<IHHIIHH", fmt_size, 0xFFFE, channels, sample_rate, byte_rate, block_align, bits_per_sample) +
+        struct.pack("<HH", cb_size, bits_per_sample) +
+        struct.pack("<I", channel_mask) +
+        pcm_guid +
         b"data" + struct.pack("<I", data_size)
     )
 
 
-def float32_to_pcm16(data):
+def float32_to_pcm24(data):
     samples = np.frombuffer(data, dtype=np.float32)
     if samples.size == 0:
         return b""
     samples = np.nan_to_num(samples, nan=0.0, posinf=1.0, neginf=-1.0)
     samples = np.clip(samples, -1.0, 1.0)
-    return (samples * 32767).astype("<i2").tobytes()
+    int_samples = (samples * 8388607).astype("<i4")
+    bytes4 = int_samples.tobytes()
+    return b"".join(bytes4[index:index + 3] for index in range(0, len(bytes4), 4))
 
 
 class PcmBroadcaster:
@@ -265,7 +275,7 @@ class ChromecastStream:
             self.broadcaster.publish(header)
             self.header_sent = True
         self.broadcaster.clear_audio_backlog()
-        self.broadcaster.publish(float32_to_pcm16(data))
+        self.broadcaster.publish(float32_to_pcm24(data))
 
     def stop(self):
         try:
