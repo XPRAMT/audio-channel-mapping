@@ -304,7 +304,7 @@ class ChromecastStream:
                     time.sleep(5)
                     try:
                         gap = time.time() - self._last_audio_time
-                        if gap > 29:
+                        if gap > 30:
                             log(f"audio gap={gap:.1f}s, reloading")
                             self._last_audio_time = time.time()
                             local_ip = local_ip_for_target(self.cast_info.host)
