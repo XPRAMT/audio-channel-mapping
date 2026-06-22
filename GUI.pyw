@@ -260,22 +260,13 @@ def Auto_Apply():
     global presetIndex
     presetData = loaded_config.get(PRESET_DATA_KEY, {})
     comboSlots = presetData.get(coName, [])
-    if comboSlots:
-        idx = loaded_config.get(PRESET_INDEX_KEY, 0)
-        if idx < len(comboSlots) and comboSlots[idx] is not None:
-            presetIndex = idx
-            print(f'[INFO] Apply preset {idx+1}: {coName}')
-            ApplyMappingSnapshot(comboSlots[idx])
-            update_preset_highlight()
-            return
-        elif len(comboSlots) > 0 and comboSlots[0] is not None:
-            presetIndex = 0
-            print(f'[INFO] Apply preset 1: {coName}')
-            ApplyMappingSnapshot(comboSlots[0])
-            loaded_config[PRESET_INDEX_KEY] = 0
-            config_file(loaded_config)
-            update_preset_highlight()
-            return
+    idx = loaded_config.get(PRESET_INDEX_KEY, 0)
+    if idx < len(comboSlots) and comboSlots[idx] is not None:
+        presetIndex = idx
+        print(f'[INFO] Apply preset {idx+1}: {coName}')
+        ApplyMappingSnapshot(comboSlots[idx])
+        update_preset_highlight()
+        return
     # 舊有載入邏輯
     if coName in loaded_config:
         print(f'[INFO] Apply loaded config: {coName} {loaded_config[coName]}')
