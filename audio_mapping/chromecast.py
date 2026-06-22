@@ -15,6 +15,7 @@ HTTP_PORT_OFFSET = 100
 STREAM_PATH_PREFIX = "/chromecast"
 CONTENT_TYPE = "audio/wav"
 SUPPORTED_SAMPLE_RATES = (44100, 48000, 88200, 96000)
+CAST_WAIT_TIMEOUT = 1.5
 DISCOVERY_INTERVAL = 30
 VOLUME_SYNC_INTERVAL = 0.5
 VOLUME_EPSILON = 0.005
@@ -230,7 +231,7 @@ class ChromecastStream:
     def _connect_and_play(self):
         try:
             cast = pychromecast.Chromecast(self.cast_info, zconf=get_zconf())
-            cast.wait(timeout=10)
+            cast.wait(timeout=CAST_WAIT_TIMEOUT)
             self.cast = cast
             local_ip = local_ip_for_target(self.cast_info.host)
             port = shared.Config.get("port", 25505) + HTTP_PORT_OFFSET
@@ -243,11 +244,6 @@ class ChromecastStream:
                 stream_type="LIVE",
                 autoplay=True,
             )
-            try:
-                media.block_until_active(timeout=10)
-                media.play()
-            except Exception as error:
-                print(f"[Chromecast] media active warning: {error}")
             print(f"[Chromecast] start {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
         except Exception as error:
             print(f"[Chromecast] connect/play error: {error}")
