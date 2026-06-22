@@ -25,6 +25,7 @@ _cast_infos = {}
 _streams = {}
 _volume_set_suppress_until = {}
 _pending_volumes = {}
+_volume_next_send_at = {}
 _zconf = Zeroconf()
 _http_server = None
 _http_thread = None
@@ -105,6 +106,17 @@ def update_client_volume(dev_id, volume, notify_gui=True):
     if notify_gui:
         shared.to_GUI.put([4, [dev_id, volume]])
         shared.VolChanger = dev_id
+
+
+def send_volume_now(dev_id, volume):
+    _volume_set_suppress_until[dev_id] = time.time() + VOLUME_SET_SUPPRESS_SECONDS
+    stream = _streams.get(dev_id)
+    if stream:
+        stream.set_volume(volume)
+    else:
+        cast_info = _cast_infos.get(dev_id)
+        if cast_info:
+            set_device_volume(cast_info, volume)
 
 
 def make_wav_header(sample_rate, channels=2, byte_per_sample=2):
@@ -386,8 +398,14 @@ def sender_loop():
         elif action == "volume":
             _, dev_id, volume = command
             update_client_volume(dev_id, volume, notify_gui=False)
-            _volume_set_suppress_until[dev_id] = time.time() + VOLUME_SET_SUPPRESS_SECONDS
-            _pending_volumes[dev_id] = volume
+            now = time.time()
+            next_send_at = _volume_next_send_at.get(dev_id, 0)
+            if now >= next_send_at:
+                send_volume_now(dev_id, volume)
+                _volume_next_send_at[dev_id] = now + VOLUME_SYNC_INTERVAL
+                _pending_volumes.pop(dev_id, None)
+            else:
+                _pending_volumes[dev_id] = volume
         elif action == "play_state":
             _, is_playing = command
             for stream in list(_streams.values()):
@@ -419,17 +437,13 @@ def publish_audio(dev_id, data):
 def volume_sender_loop():
     while True:
         try:
-            pending = dict(_pending_volumes)
-            _pending_volumes.clear()
-            for dev_id, volume in pending.items():
-                _volume_set_suppress_until[dev_id] = time.time() + VOLUME_SET_SUPPRESS_SECONDS
-                stream = _streams.get(dev_id)
-                if stream:
-                    stream.set_volume(volume)
-                else:
-                    cast_info = _cast_infos.get(dev_id)
-                    if cast_info:
-                        set_device_volume(cast_info, volume)
+            now = time.time()
+            for dev_id, volume in list(_pending_volumes.items()):
+                if now < _volume_next_send_at.get(dev_id, 0):
+                    continue
+                _pending_volumes.pop(dev_id, None)
+                send_volume_now(dev_id, volume)
+                _volume_next_send_at[dev_id] = now + VOLUME_SYNC_INTERVAL
         except Exception as error:
             print(f"[Chromecast] volume sender loop error: {error}")
         time.sleep(VOLUME_SYNC_INTERVAL)
