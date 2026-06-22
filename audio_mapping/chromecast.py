@@ -249,6 +249,7 @@ class ChromecastStream:
         self.started = False
         self.play_thread = None
         self.logged_first_audio = False
+        self._last_audio_time = 0
 
     def start(self):
         if self.started:
@@ -291,14 +292,18 @@ class ChromecastStream:
             media.block_until_active(timeout=3)
             media.play()
             log(f"media play sent")
-            # 每秒重送 play 作為 Chromecast BUFFERING workaround
+            # 每 5 秒重送 play 作為 Chromecast BUFFERING workaround
             def keep_playing():
                 while self.started and self.cast:
+                    time.sleep(5)
                     try:
+                        gap = time.time() - self._last_audio_time
+                        if gap > 5:
+                            silence_frame = b"\x00" * (self.sample_rate // 100 * 2 * CHROMECAST_BYTE_PER_SAMPLE)  # 10ms silence
+                            self.broadcaster.publish(silence_frame)
                         self.cast.media_controller.play()
                     except Exception:
                         pass
-                    time.sleep(1)
             threading.Thread(target=keep_playing, daemon=True).start()
         except Exception as error:
             log(f"connect/play error: {error}")
@@ -312,6 +317,7 @@ class ChromecastStream:
             log(f"volume error: {error}")
 
     def publish_audio(self, data):
+        self._last_audio_time = time.time()
         if not self.logged_first_audio:
             self.logged_first_audio = True
             log(f"first mapped audio {len(data)} bytes")
