@@ -86,6 +86,9 @@ def setDevVol(devName,vol):
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
     if devName in shared.AllDevS:
         shared.AllDevS[devName]['volume'] = vol
+        if shared.AllDevS[devName].get('type') == 'chromecast':
+            shared.to_chromecast.put(['volume', devName, vol])
+            return
         IP = shared.AllDevS[devName]['IP']
         if IP and 'socket' in shared.clients.get(IP, {}):
             # 發送音量到Client

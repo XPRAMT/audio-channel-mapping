@@ -145,6 +145,26 @@ class ChromecastStream:
         self.started = True
         print(f"[Chromecast] start {self.cast_info.friendly_name} {self.sample_rate}Hz {url}")
 
+    def set_volume(self, volume):
+        if not self.cast:
+            return
+        try:
+            self.cast.set_volume(max(0.0, min(1.0, float(volume))))
+        except Exception as error:
+            print(f"[Chromecast] volume error: {error}")
+
+    def set_play_state(self, is_playing):
+        if not self.cast:
+            return
+        try:
+            media = self.cast.media_controller
+            if is_playing:
+                media.play()
+            else:
+                media.pause()
+        except Exception as error:
+            print(f"[Chromecast] play state error: {error}")
+
     def publish_audio(self, data):
         if not self.header_sent:
             self.broadcaster.publish(make_wav_header(self.sample_rate))
@@ -220,7 +240,7 @@ def update_discovered_devices(devices):
         client = {
             "type": "chromecast",
             "MAC": dev_id,
-            "name": f"Chromecast - {device.friendly_name}",
+            "name": device.friendly_name,
             "host": device.host,
             "port": device.port,
             "uuid": str(device.uuid),
@@ -282,6 +302,9 @@ def sender_loop():
                 _streams[dev_id] = stream
             try:
                 stream.start()
+                client = shared.clients.get(dev_id)
+                if client:
+                    stream.set_volume(client.get("volume", 1.0))
             except Exception as error:
                 print(f"[Chromecast] start error: {error}")
         elif action == "audio":
@@ -289,6 +312,18 @@ def sender_loop():
             stream = _streams.get(dev_id)
             if stream and stream.started:
                 stream.publish_audio(data)
+        elif action == "volume":
+            _, dev_id, volume = command
+            client = shared.clients.get(dev_id)
+            if client:
+                client["volume"] = volume
+            stream = _streams.get(dev_id)
+            if stream:
+                stream.set_volume(volume)
+        elif action == "play_state":
+            _, is_playing = command
+            for stream in list(_streams.values()):
+                stream.set_play_state(is_playing)
         elif action == "stop":
             _, dev_id = command
             stream = _streams.pop(dev_id, None)

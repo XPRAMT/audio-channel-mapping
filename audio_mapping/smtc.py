@@ -305,6 +305,7 @@ class MediaControlWidget(QtWidgets.QWidget):
             for IP, client in list(shared.clients.items()):
                 if 'socket' in client:
                     shared.to_server.put([IP, 'state', None])
+            shared.to_chromecast.put(['play_state', shared.Header.isPlaying])
 
     def control(self, action):
         '發送控制指令'
