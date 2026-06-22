@@ -123,5 +123,40 @@
       <source>Cleared</source>
       <translation>সাফ করা হয়েছে</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="707" />
+      <source>Save current mapping to preset</source>
+      <translation>বর্তমান ম্যাপিং প্রিসেটে সংরক্ষণ করুন</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="712" />
+      <source>Clear current preset slot</source>
+      <translation>বর্তমান প্রিসেট স্লট সাফ করুন</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="717" />
+      <source>Toggle input between microphone and speakers (loopback)</source>
+      <translation>মাইক্রোফোন এবং স্পিকার (লুপব্যাক) এর মধ্যে ইনপুট টগল করুন</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="722" />
+      <source>Open settings</source>
+      <translation>সেটিংস খুলুন</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="727" />
+      <source>Rescan audio devices</source>
+      <translation>অডিও ডিভাইস পুনরায় স্ক্যান করুন</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="732" />
+      <source>Start/stop audio channel mapping</source>
+      <translation>অডিও চ্যানেল ম্যাপিং শুরু/বন্ধ করুন</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="740" />
+      <source>Switch to preset</source>
+      <translation>প্রিসেটে স্যুইচ করুন</translation>
+    </message>
   </context>
 </TS>

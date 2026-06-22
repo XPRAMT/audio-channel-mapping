@@ -123,5 +123,40 @@
       <source>Cleared</source>
       <translation>Limpiado</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="707" />
+      <source>Save current mapping to preset</source>
+      <translation>Guardar mapeo actual en preajuste</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="712" />
+      <source>Clear current preset slot</source>
+      <translation>Limpiar ranura de preajuste actual</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="717" />
+      <source>Toggle input between microphone and speakers (loopback)</source>
+      <translation>Alternar entrada entre micrófono y altavoces (loopback)</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="722" />
+      <source>Open settings</source>
+      <translation>Abrir configuración</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="727" />
+      <source>Rescan audio devices</source>
+      <translation>Reescanear dispositivos de audio</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="732" />
+      <source>Start/stop audio channel mapping</source>
+      <translation>Iniciar/detener mapeo de canales de audio</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="740" />
+      <source>Switch to preset</source>
+      <translation>Cambiar a preajuste</translation>
+    </message>
   </context>
 </TS>

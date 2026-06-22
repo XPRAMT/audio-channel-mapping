@@ -123,5 +123,40 @@
       <source>Cleared</source>
       <translation type="unfinished" />
     </message>
+    <message>
+      <location filename="GUI.py" line="707" />
+      <source>Save current mapping to preset</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="712" />
+      <source>Clear current preset slot</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="717" />
+      <source>Toggle input between microphone and speakers (loopback)</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="722" />
+      <source>Open settings</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="727" />
+      <source>Rescan audio devices</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="732" />
+      <source>Start/stop audio channel mapping</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="GUI.py" line="740" />
+      <source>Switch to preset</source>
+      <translation type="unfinished" />
+    </message>
   </context>
 </TS>

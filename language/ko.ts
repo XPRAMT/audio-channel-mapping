@@ -123,5 +123,40 @@
       <source>Cleared</source>
       <translation>지워짐</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="707" />
+      <source>Save current mapping to preset</source>
+      <translation>현재 매핑을 프리셋에 저장</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="712" />
+      <source>Clear current preset slot</source>
+      <translation>현재 프리셋 슬롯 지우기</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="717" />
+      <source>Toggle input between microphone and speakers (loopback)</source>
+      <translation>마이크와 스피커(루프백) 입력 전환</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="722" />
+      <source>Open settings</source>
+      <translation>설정 열기</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="727" />
+      <source>Rescan audio devices</source>
+      <translation>오디오 장치 다시 검색</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="732" />
+      <source>Start/stop audio channel mapping</source>
+      <translation>오디오 채널 매핑 시작/중지</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="740" />
+      <source>Switch to preset</source>
+      <translation>프리셋으로 전환</translation>
+    </message>
   </context>
 </TS>

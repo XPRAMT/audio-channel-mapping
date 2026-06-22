@@ -704,32 +704,32 @@ class main_window(QtWidgets.QWidget):
         vbox.addLayout(Grid_btn)
         # 建立儲存按鈕
         button_Save = QtWidgets.QPushButton('💾')#app.translate('', "Save"))
-        button_Save.setToolTip('Save current mapping to preset')
+        button_Save.setToolTip(app.translate('', 'Save current mapping to preset'))
         button_Save.clicked.connect(SaveClicked)
         Grid_btn.addWidget(button_Save,0,0)
         # 建立刪除按鈕
         button_del = QtWidgets.QPushButton('🗑️')#app.translate('', "Delete"))
-        button_del.setToolTip('Clear current preset slot')
+        button_del.setToolTip(app.translate('', 'Clear current preset slot'))
         button_del.clicked.connect(DelClicked)
         Grid_btn.addWidget(button_del,0,1)
         # 建立輸入裝置切換按鈕
         button_switch = QtWidgets.QPushButton('🎧➞🎙️')#app.translate('', "Switch"))
-        button_switch.setToolTip('Toggle input between microphone and speakers (loopback)')
+        button_switch.setToolTip(app.translate('', 'Toggle input between microphone and speakers (loopback)'))
         button_switch.clicked.connect(switch_inputDev)
         Grid_btn.addWidget(button_switch,0,2)
         # 建立設定按鈕
         button_setting = QtWidgets.QPushButton('⚙️')#app.translate('', "Setting"))
-        button_setting.setToolTip('Open settings')
+        button_setting.setToolTip(app.translate('', 'Open settings'))
         button_setting.clicked.connect(lambda: MainWindow.leftStacked.setCurrentWidget(self.settings_page))
         Grid_btn.addWidget(button_setting,1,0)
         # 建立Refresh按鈕
         button_scan = QtWidgets.QPushButton('🔄')#app.translate('', "Refresh"))
-        button_scan.setToolTip('Rescan audio devices')
+        button_scan.setToolTip(app.translate('', 'Rescan audio devices'))
         button_scan.clicked.connect(ScanClicked)
         Grid_btn.addWidget(button_scan,1,1)
         # 建立映射按鈕
         button_mapping = QtWidgets.QPushButton('▶️')#app.translate('', "Start"))
-        button_mapping.setToolTip('Start/stop audio channel mapping')
+        button_mapping.setToolTip(app.translate('', 'Start/stop audio channel mapping'))
         button_mapping.clicked.connect(MappingClicked)
         Grid_btn.addWidget(button_mapping,1,2)
         # 建立方案快捷鍵
@@ -737,7 +737,7 @@ class main_window(QtWidgets.QWidget):
         presetNums = ['1', '2', '3']
         for i in range(3):
             btn = QtWidgets.QPushButton(presetNums[i])
-            btn.setToolTip(f'Switch to preset {i+1}')
+            btn.setToolTip(f'{app.translate("", "Switch to preset")} {i+1}')
             btn.clicked.connect(partial(SelectPresetClicked, i))
             Grid_btn.addWidget(btn, 2, i)
             presetButtons.append(btn)

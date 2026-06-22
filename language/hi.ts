@@ -123,5 +123,40 @@
       <source>Cleared</source>
       <translation>साफ़ किया गया</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="707" />
+      <source>Save current mapping to preset</source>
+      <translation>वर्तमान मैपिंग को प्रीसेट में सहेजें</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="712" />
+      <source>Clear current preset slot</source>
+      <translation>वर्तमान प्रीसेट स्लॉट साफ़ करें</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="717" />
+      <source>Toggle input between microphone and speakers (loopback)</source>
+      <translation>माइक्रोफ़ोन और स्पीकर (लूपबैक) के बीच इनपुट टॉगल करें</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="722" />
+      <source>Open settings</source>
+      <translation>सेटिंग खोलें</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="727" />
+      <source>Rescan audio devices</source>
+      <translation>ऑडियो डिवाइस पुनः स्कैन करें</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="732" />
+      <source>Start/stop audio channel mapping</source>
+      <translation>ऑडियो चैनल मैपिंग शुरू/बंद करें</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="740" />
+      <source>Switch to preset</source>
+      <translation>प्रीसेट पर स्विच करें</translation>
+    </message>
   </context>
 </TS>

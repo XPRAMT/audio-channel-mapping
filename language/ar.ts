@@ -123,5 +123,40 @@
       <source>Cleared</source>
       <translation>تم المسح</translation>
     </message>
+    <message>
+      <location filename="GUI.py" line="707" />
+      <source>Save current mapping to preset</source>
+      <translation>حفظ التخطيط الحالي في الإعداد المسبق</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="712" />
+      <source>Clear current preset slot</source>
+      <translation>مسخ الإعداد المسبق الحالي</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="717" />
+      <source>Toggle input between microphone and speakers (loopback)</source>
+      <translation>تبديل الإدخال بين الميكروفون ومكبرات الصوت (حلقة ارتجاع)</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="722" />
+      <source>Open settings</source>
+      <translation>فتح الإعدادات</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="727" />
+      <source>Rescan audio devices</source>
+      <translation>إعادة فحص أجهزة الصوت</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="732" />
+      <source>Start/stop audio channel mapping</source>
+      <translation>بدء/إيقاف تخطيط قنوات الصوت</translation>
+    </message>
+    <message>
+      <location filename="GUI.py" line="740" />
+      <source>Switch to preset</source>
+      <translation>التبديل إلى الإعداد المسبق</translation>
+    </message>
   </context>
 </TS>
