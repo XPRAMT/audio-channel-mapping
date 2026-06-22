@@ -20,11 +20,13 @@ VOLUME_SYNC_INTERVAL = 0.5
 VOLUME_EPSILON = 0.005
 VOLUME_SET_SUPPRESS_SECONDS = 1.5
 HTTP_CLIENT_QUEUE_SIZE = 8
+DISCOVERY_MISS_LIMIT = 3
 
 _cast_infos = {}
 _streams = {}
 _volume_set_suppress_until = {}
 _pending_volumes = {}
+_discovery_misses = {}
 _volume_next_send_at = {}
 _zconf = Zeroconf()
 _http_server = None
@@ -325,28 +327,38 @@ def update_discovered_devices(devices):
     for device in devices:
         dev_id = f"chromecast:{device.uuid}"
         current_ids.add(dev_id)
+        _discovery_misses.pop(dev_id, None)
         _cast_infos[dev_id] = device
         old_client = shared.clients.get(dev_id, {})
         volume = read_device_volume(device, old_client.get("volume", 1.0))
-        client = {
+        client_info = {
             "type": "chromecast",
             "MAC": dev_id,
             "name": device.friendly_name,
             "host": device.host,
             "port": device.port,
             "uuid": str(device.uuid),
-            "volume": volume,
             "maxVol": 100,
             "chList": ["FL", "FR"],
         }
-        if shared.clients.get(dev_id) != client:
-            shared.clients[dev_id] = client
+        if not old_client:
+            shared.clients[dev_id] = {**client_info, "volume": volume}
             changed = True
+        else:
+            for key, value in client_info.items():
+                if old_client.get(key) != value:
+                    old_client[key] = value
+                    changed = True
+            update_client_volume(dev_id, volume)
     for dev_id, client in list(shared.clients.items()):
         if client.get("type") == "chromecast" and dev_id not in current_ids:
-            shared.clients.pop(dev_id, None)
-            _cast_infos.pop(dev_id, None)
-            changed = True
+            misses = _discovery_misses.get(dev_id, 0) + 1
+            _discovery_misses[dev_id] = misses
+            if misses >= DISCOVERY_MISS_LIMIT:
+                shared.clients.pop(dev_id, None)
+                _cast_infos.pop(dev_id, None)
+                _discovery_misses.pop(dev_id, None)
+                changed = True
     if changed:
         shared.to_GUI.put([3, "Rescan"])
 
